@@ -1,0 +1,395 @@
+2025-12-03 17:36:44 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-03 17:36:44 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-03 17:36:44 - financial_assistant - INFO - 成功加载配置文件: config\model_config.yaml
+2025-12-03 20:12:49 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-03 20:12:49 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-03 20:12:49 - financial_assistant - INFO - 成功加载配置文件: config\model_config.yaml
+2025-12-03 20:20:23 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-03 20:20:23 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-03 20:20:23 - financial_assistant - INFO - 成功加载配置文件: config\model_config.yaml
+2025-12-03 20:39:34 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-03 20:39:34 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-03 20:39:34 - financial_assistant - INFO - 成功加载配置文件: config\model_config.yaml
+2025-12-03 20:49:50 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-03 20:49:50 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-03 20:49:50 - financial_assistant - INFO - 成功加载配置文件: config\model_config.yaml
+2025-12-03 20:59:47 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-03 20:59:47 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-03 20:59:47 - financial_assistant - INFO - 成功加载配置文件: config\model_config.yaml
+2025-12-03 21:59:17 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-03 21:59:17 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-03 21:59:17 - financial_assistant - INFO - 成功加载配置文件: config\model_config.yaml
+2025-12-03 22:00:02 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-03 22:00:02 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-03 22:00:02 - financial_assistant - INFO - 成功加载配置文件: config\model_config.yaml
+2025-12-03 22:05:01 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-03 22:05:01 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-03 22:05:01 - financial_assistant - INFO - 成功加载配置文件: config\model_config.yaml
+2025-12-03 22:12:53 - financial_assistant - INFO - 开始初始化知识库...
+2025-12-03 22:12:53 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-03 22:13:04 - financial_assistant - ERROR - 知识库初始化失败: <MilvusException: (code=2, message=Fail connecting to server on localhost:19530, illegal connection params or server unavailable)>
+2025-12-03 22:13:43 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-03 22:13:43 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-03 22:13:43 - financial_assistant - INFO - 成功加载配置文件: config\model_config.yaml
+2025-12-06 13:17:31 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-06 13:17:31 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-06 13:17:31 - financial_assistant - INFO - 成功加载配置文件: config\model_config.yaml
+2025-12-07 16:20:07 - financial_assistant - INFO - 开始初始化知识库...
+2025-12-07 16:20:07 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-07 16:20:17 - financial_assistant - ERROR - 知识库初始化失败: <MilvusException: (code=2, message=Fail connecting to server on localhost:19530, illegal connection params or server unavailable)>
+2025-12-07 16:21:12 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-07 16:21:12 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-07 16:21:12 - financial_assistant - INFO - 成功加载配置文件: config\model_config.yaml
+2025-12-07 19:27:50 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-07 19:27:50 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-07 19:27:50 - financial_assistant - INFO - 成功加载配置文件: config\model_config.yaml
+2025-12-08 12:25:01 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 12:25:01 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 12:25:01 - financial_assistant - INFO - 成功加载配置文件: config\model_config.yaml
+2025-12-08 12:27:52 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 12:27:52 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 12:27:52 - financial_assistant - INFO - 成功加载配置文件: config\model_config.yaml
+2025-12-08 12:30:12 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 12:30:12 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 12:30:12 - financial_assistant - INFO - 成功加载配置文件: config\model_config.yaml
+2025-12-08 12:34:46 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 12:34:46 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 12:34:46 - financial_assistant - INFO - 成功加载配置文件: config\model_config.yaml
+2025-12-08 12:36:12 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 12:36:12 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 12:36:12 - financial_assistant - INFO - 成功加载配置文件: config\model_config.yaml
+2025-12-08 12:36:25 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 12:36:25 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 12:36:25 - financial_assistant - INFO - 成功加载配置文件: config\model_config.yaml
+2025-12-08 12:36:45 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 12:36:45 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 12:36:45 - financial_assistant - INFO - 成功加载配置文件: config\model_config.yaml
+2025-12-08 12:37:10 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 12:37:36 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 12:38:15 - financial_assistant - INFO - 开始初始化知识库...
+2025-12-08 12:38:15 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 12:41:15 - financial_assistant - INFO - 开始初始化知识库...
+2025-12-08 12:41:15 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 12:42:29 - financial_assistant - INFO - 开始初始化知识库...
+2025-12-08 12:42:29 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 12:45:25 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 12:45:25 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 12:45:25 - financial_assistant - INFO - 成功加载配置文件: config\model_config.yaml
+2025-12-08 12:45:42 - financial_assistant - INFO - 成功加载配置文件: config\model_config.yaml
+2025-12-08 12:45:42 - financial_assistant - ERROR - 加载配置文件失败: _path_exists: path should be string, bytes, os.PathLike or integer, not dict
+2025-12-08 12:45:43 - financial_assistant - WARNING - 未找到API Key，将使用模拟模式
+2025-12-08 12:46:00 - financial_assistant - WARNING - 配置文件不存在: model_config.yaml，使用默认配置
+2025-12-08 12:46:01 - financial_assistant - WARNING - 未找到API Key，将使用模拟模式
+2025-12-08 12:48:24 - financial_assistant - WARNING - 配置文件不存在: D:\code\financial_assistant_agent\model_config.yaml，使用默认配置
+2025-12-08 12:48:24 - financial_assistant - WARNING - 未找到API Key，将使用模拟模式
+2025-12-08 12:48:43 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 12:48:43 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-turbo, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 12:48:59 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 12:49:00 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-turbo, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 12:49:17 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 12:50:02 - financial_assistant - INFO - 开始初始化知识库...
+2025-12-08 12:50:02 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 12:51:36 - financial_assistant - INFO - 开始初始化知识库...
+2025-12-08 12:51:36 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 12:55:15 - financial_assistant - INFO - 开始初始化知识库...
+2025-12-08 12:55:15 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 17:34:34 - financial_assistant - INFO - 开始初始化知识库...
+2025-12-08 17:34:34 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 17:34:34 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 17:34:34 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 17:34:37 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 17:34:37 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 17:34:39 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 17:34:39 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 17:34:39 - financial_assistant - ERROR - 知识库初始化失败: 1049 (42000): Unknown database 'financial_rag'
+2025-12-08 17:40:33 - financial_assistant - INFO - 开始初始化知识库...
+2025-12-08 17:40:33 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 17:40:33 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 17:40:33 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 17:40:34 - financial_assistant - INFO - 知识库初始化完成！
+2025-12-08 17:40:34 - financial_assistant - INFO - - MySQL表已创建
+2025-12-08 17:40:34 - financial_assistant - INFO - - Milvus集合已创建
+2025-12-08 17:40:34 - financial_assistant - ERROR - 知识库初始化失败: Connections.disconnect() missing 1 required positional argument: 'alias'
+2025-12-08 17:41:35 - financial_assistant - INFO - 开始初始化知识库...
+2025-12-08 17:41:35 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 17:41:35 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 17:41:35 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 17:41:36 - financial_assistant - INFO - 知识库初始化完成！
+2025-12-08 17:41:36 - financial_assistant - INFO - - MySQL表已创建
+2025-12-08 17:41:36 - financial_assistant - INFO - - Milvus集合已创建
+2025-12-08 17:47:56 - financial_assistant - ERROR - 文件不存在: urls.txt
+2025-12-08 17:48:11 - financial_assistant - ERROR - 文件不存在: scripts/urls.txt
+2025-12-08 17:49:04 - financial_assistant - INFO - 开始同步 24 条财经新闻...
+2025-12-08 17:49:04 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 17:49:04 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 17:49:04 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 17:49:05 - financial_assistant - INFO - [1/24] 处理: http://www.xinhuanet.com/finance/
+2025-12-08 17:49:05 - financial_assistant - INFO - ✓ 成功添加: 无标题
+2025-12-08 17:49:05 - financial_assistant - INFO - [2/24] 处理: http://finance.people.com.cn/
+2025-12-08 17:49:05 - financial_assistant - INFO - ✓ 成功添加: ä¸­å±ä¸­å¤®æ¿æ²»å±å¬å¼ä¼è®® åæç ç©¶2026å¹´ç»æµå·¥ä½
+2025-12-08 17:49:05 - financial_assistant - INFO - [3/24] 处理: http://finance.cctv.com/
+2025-12-08 17:49:06 - financial_assistant - INFO - ✓ 成功添加: 无标题
+2025-12-08 17:49:06 - financial_assistant - INFO - [4/24] 处理: https://www.caixin.com/
+2025-12-08 17:49:06 - financial_assistant - INFO - ✓ 成功添加: 无标题
+2025-12-08 17:49:06 - financial_assistant - INFO - [5/24] 处理: https://www.yicai.com/
+2025-12-08 17:49:07 - financial_assistant - INFO - ✓ 成功添加: 无标题
+2025-12-08 17:49:07 - financial_assistant - INFO - [6/24] 处理: http://www.21jingji.com/
+2025-12-08 17:49:07 - financial_assistant - INFO - ✓ 成功添加: å®è§
+2025-12-08 17:49:07 - financial_assistant - INFO - [7/24] 处理: http://www.eeo.com.cn/
+2025-12-08 17:49:08 - financial_assistant - INFO - ✓ 成功添加: å¿«è®¯
+2025-12-08 17:49:08 - financial_assistant - INFO - [8/24] 处理: https://www.cs.com.cn/
+2025-12-08 17:49:08 - financial_assistant - INFO - ✓ 成功添加: 无标题
+2025-12-08 17:49:08 - financial_assistant - INFO - [9/24] 处理: https://www.cnstock.com/
+2025-12-08 17:49:09 - financial_assistant - INFO - ✓ 成功添加: 无标题
+2025-12-08 17:49:09 - financial_assistant - INFO - [10/24] 处理: https://www.stcn.com/
+2025-12-08 17:49:09 - financial_assistant - INFO - ✓ 成功添加: 中共中央政治局召开会议 中共中央总书记习近平主持会议
+2025-12-08 17:49:09 - financial_assistant - INFO - [11/24] 处理: https://wallstreetcn.com/
+2025-12-08 17:49:10 - financial_assistant - INFO - ✓ 成功添加: 无标题
+2025-12-08 17:49:10 - financial_assistant - INFO - [12/24] 处理: https://www.ftchinese.com/
+2025-12-08 17:49:31 - financial_assistant - ERROR - ✗ 处理失败 https://www.ftchinese.com/: HTTPSConnectionPool(host='www.ftchinese.com', port=443): Max retries exceeded with url: / (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x000001C102A90F50>, 'Connection to www.ftchinese.com timed out. (connect timeout=None)'))
+2025-12-08 17:49:31 - financial_assistant - INFO - [13/24] 处理: https://cn.reuters.com/
+2025-12-08 17:49:52 - financial_assistant - ERROR - ✗ 处理失败 https://cn.reuters.com/: HTTPSConnectionPool(host='cn.reuters.com', port=443): Max retries exceeded with url: / (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x000001C1750C6FD0>, 'Connection to cn.reuters.com timed out. (connect timeout=None)'))
+2025-12-08 17:49:52 - financial_assistant - INFO - [14/24] 处理: https://www.bloomberg.com/china
+2025-12-08 17:50:13 - financial_assistant - ERROR - ✗ 处理失败 https://www.bloomberg.com/china: HTTPSConnectionPool(host='www.bloomberg.com', port=443): Max retries exceeded with url: /china (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x000001C102A90F50>, 'Connection to www.bloomberg.com timed out. (connect timeout=None)'))
+2025-12-08 17:50:13 - financial_assistant - INFO - [15/24] 处理: http://www.stats.gov.cn/
+2025-12-08 17:50:17 - financial_assistant - INFO - ✓ 成功添加: 无标题
+2025-12-08 17:50:17 - financial_assistant - INFO - [16/24] 处理: http://www.pbc.gov.cn/
+2025-12-08 17:50:17 - financial_assistant - INFO - ✓ 成功添加: 无标题
+2025-12-08 17:50:17 - financial_assistant - INFO - [17/24] 处理: http://www.csrc.gov.cn/
+2025-12-08 17:50:17 - financial_assistant - INFO - ✓ 成功添加: 403
+2025-12-08 17:50:17 - financial_assistant - INFO - [18/24] 处理: http://www.cbirc.gov.cn/
+2025-12-08 17:50:28 - financial_assistant - ERROR - ✗ 处理失败 http://www.cbirc.gov.cn/: HTTPConnectionPool(host='www.cbirc.gov.cn', port=80): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPConnection object at 0x000001C174F87BD0>: Failed to resolve 'www.cbirc.gov.cn' ([Errno 11002] getaddrinfo failed)"))
+2025-12-08 17:50:28 - financial_assistant - INFO - [19/24] 处理: http://www.sse.com.cn/
+2025-12-08 17:50:28 - financial_assistant - INFO - ✓ 成功添加: è¦é»
+2025-12-08 17:50:28 - financial_assistant - INFO - [20/24] 处理: http://www.szse.cn/
+2025-12-08 17:50:28 - financial_assistant - INFO - ✓ 成功添加: 无标题
+2025-12-08 17:50:28 - financial_assistant - INFO - [21/24] 处理: http://www.bse.cn/
+2025-12-08 17:50:28 - financial_assistant - INFO - ✓ 成功添加: 无标题
+2025-12-08 17:50:28 - financial_assistant - INFO - [22/24] 处理: https://tushare.pro/
+2025-12-08 17:50:29 - financial_assistant - INFO - ✓ 成功添加: 
+2025-12-08 17:50:29 - financial_assistant - INFO - [23/24] 处理: http://baostock.com/
+2025-12-08 17:50:29 - financial_assistant - INFO - ✓ 成功添加: 无标题
+2025-12-08 17:50:29 - financial_assistant - INFO - [24/24] 处理: https://www.akshare.xyz/
+2025-12-08 17:50:29 - financial_assistant - ERROR - ✗ 处理失败 https://www.akshare.xyz/: HTTPSConnectionPool(host='www.akshare.xyz', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001C1750C6710>: Failed to resolve 'www.akshare.xyz' ([Errno 11001] getaddrinfo failed)"))
+2025-12-08 17:50:29 - financial_assistant - INFO - 
+同步完成！成功: 19/24
+2025-12-08 17:50:56 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 17:50:56 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 17:50:56 - financial_assistant - INFO - 成功加载配置文件: config\model_config.yaml
+2025-12-08 17:52:08 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 17:52:08 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 17:52:08 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 17:52:09 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 17:52:09 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 17:52:10 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-turbo, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 18:12:18 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 18:12:18 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 18:12:18 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 18:12:19 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 18:12:19 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 18:12:19 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-turbo, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 18:13:03 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 18:13:03 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 18:13:03 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 18:13:04 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 18:13:04 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 18:13:04 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-turbo, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 18:14:14 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 18:14:14 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 18:14:38 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 18:14:38 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 18:14:38 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 18:14:39 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 18:14:39 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 18:14:40 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-turbo, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 18:15:21 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 18:15:21 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 18:15:21 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 18:15:22 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 18:15:22 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 18:15:22 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-turbo, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 18:15:45 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 18:15:45 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 18:15:46 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 18:15:46 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 18:15:46 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 18:15:47 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-turbo, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 18:17:01 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 18:17:01 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 18:17:01 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 18:17:02 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 18:17:02 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 18:17:02 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-turbo, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 18:17:29 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 18:17:29 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 18:17:30 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 18:17:30 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 18:17:30 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 18:17:31 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-turbo, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 18:23:20 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 18:23:20 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 18:23:20 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 18:23:21 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 18:23:21 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 18:23:21 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-turbo, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 18:24:41 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 18:24:41 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 18:24:41 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 18:24:42 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 18:24:42 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 18:24:43 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-turbo, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 18:25:19 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 18:25:19 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 18:25:19 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 18:25:20 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 18:25:20 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 18:25:20 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-turbo, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 18:26:41 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 18:26:41 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 18:26:41 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 18:26:42 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 18:26:42 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 18:26:42 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-turbo, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 18:31:12 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 18:31:12 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 18:31:12 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 18:31:13 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 18:31:13 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 18:31:13 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-turbo, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 18:31:55 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 18:31:55 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 18:31:55 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 18:31:56 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 18:31:56 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 18:31:56 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-turbo, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 18:32:42 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 18:32:42 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 18:32:42 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 18:32:43 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 18:32:43 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 18:32:44 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-turbo, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 18:35:14 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 18:35:14 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 18:35:14 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 18:35:15 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 18:35:15 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 18:35:15 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-turbo, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 18:35:44 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 18:35:44 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 18:35:44 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 18:35:45 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 18:35:45 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 18:35:46 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-turbo, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 18:36:55 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 18:36:55 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 18:36:55 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 18:36:56 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 18:36:56 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 18:36:56 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-turbo, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 18:38:44 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 18:38:44 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 18:38:44 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 18:38:44 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 18:38:44 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 18:38:45 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-plus, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 20:02:38 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 20:02:39 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 20:02:39 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 20:02:39 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 20:02:39 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 20:02:40 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-plus, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 20:03:14 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 20:03:14 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 20:03:14 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 20:03:14 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 20:03:14 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 20:03:15 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-plus, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 20:04:33 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 20:04:33 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 20:04:33 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 20:04:34 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 20:04:34 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 20:04:34 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-plus, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 20:05:01 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 20:05:02 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 20:05:02 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 20:05:02 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 20:05:02 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 20:05:03 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-plus, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 20:52:56 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 20:52:56 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 20:52:56 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 20:52:57 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 20:52:57 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 20:52:58 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-plus, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 21:22:41 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 21:22:41 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 21:22:41 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 21:22:42 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 21:22:42 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 21:22:43 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-plus, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 21:25:05 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 21:25:05 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 21:25:05 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 21:25:06 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 21:25:06 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 21:25:06 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-plus, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 21:25:18 - financial_assistant - ERROR - 处理查询失败: 'IntentRecognizer' object has no attribute '_pattern_matching'
+2025-12-08 21:30:54 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 21:30:54 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 21:30:55 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 21:30:55 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 21:30:55 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 21:30:56 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-plus, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 21:34:25 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 21:34:25 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 21:34:25 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 21:34:26 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 21:34:26 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 21:34:26 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-plus, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 21:35:00 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 21:35:00 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 21:35:00 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 21:35:01 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 21:35:01 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 21:35:02 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-plus, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 21:36:01 - financial_assistant - ERROR - 获取意图数据失败: FinancialKnowledgeBase.retrieve_relevant_chunks() got an unexpected keyword argument 'intent_type'
+2025-12-08 21:36:01 - financial_assistant - ERROR - 处理查询失败: 'PromptEngine' object has no attribute '_get_time_context'
+2025-12-08 21:50:08 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 21:50:08 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 21:50:08 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 21:50:09 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 21:50:09 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 21:50:10 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-plus, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 21:50:43 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 21:50:43 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 21:50:43 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 21:50:44 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 21:50:44 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 21:50:44 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-plus, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 21:50:50 - financial_assistant - ERROR - 处理查询失败: 'PromptEngine' object has no attribute '_format_history_context'
+2025-12-08 21:51:55 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 21:51:55 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 21:51:55 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 21:51:55 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 21:51:55 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 21:51:56 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-plus, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 21:52:30 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 21:52:30 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 21:52:30 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 21:52:31 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 21:52:31 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 21:52:31 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-plus, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 21:52:48 - financial_assistant - ERROR - 处理查询失败: 'FinancialAssistantAgent' object has no attribute '_format_response'
+2025-12-08 21:53:47 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 21:53:47 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 21:53:47 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 21:53:48 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 21:53:48 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 21:53:49 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-plus, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+2025-12-08 21:54:18 - financial_assistant - INFO - 成功加载配置文件: config\database.yaml
+2025-12-08 21:54:18 - financial_assistant - INFO - 检测到本地模型，优先加载...
+2025-12-08 21:54:18 - financial_assistant - INFO - Embedding模型加载成功，维度: 384
+2025-12-08 21:54:18 - financial_assistant - INFO - 成功加载配置文件: config\api_keys.yaml
+2025-12-08 21:54:18 - financial_assistant - INFO - 成功加载LLM配置: D:\code\financial_assistant_agent\config\model_config.yaml
+2025-12-08 21:54:19 - financial_assistant - INFO - OpenAI兼容客户端初始化成功，模型: qwen-plus, base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
