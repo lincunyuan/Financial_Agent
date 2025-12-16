@@ -58,7 +58,8 @@ class FinancialAgentGraph:
                 "query_market_index": self._call_get_market_index,
                 "query_financial_news": self._call_get_financial_news,
                 "query_economic_data": self._call_get_economic_data,
-                "stock_historical_data": self._call_get_stock_historical_data
+                "stock_historical_data": self._call_generate_stock_charts,
+                "generate_stock_charts": self._call_generate_stock_charts
             }
         
         # 初始化工作流图
@@ -593,6 +594,95 @@ class FinancialAgentGraph:
             logger.error(f"调用获取经济数据工具失败: {e}")
             return {"error": str(e)}
     
+    def _call_generate_stock_charts(self, entities: List, state: FinancialAgentState) -> Dict:
+        """调用生成股票图表工具
+        
+        Args:
+            entities: 识别的实体列表
+            state: 当前状态
+            
+        Returns:
+            工具调用结果
+        """
+        try:
+            # 收集所有识别到的股票实体
+            stock_identifiers = []
+            
+            # 遍历实体列表查找所有股票相关信息
+            for entity in entities:
+                if entity.get("type") in ["stock_name", "stock"]:
+                    stock_name = entity.get("value") or entity.get("name")
+                    if stock_name:
+                        stock_identifiers.append(stock_name)
+                elif entity.get("type") in ["stock_code", "stock"]:
+                    stock_code = entity.get("value")
+                    if stock_code:
+                        stock_identifiers.append(stock_code)
+            
+            # 如果没有直接识别到，从用户输入中提取（简单处理）
+            if not stock_identifiers:
+                # 简单的股票名称提取逻辑
+                user_input = state.get("user_input", "")
+                # 这里可以添加更复杂的股票名称提取逻辑
+                logger.warning(f"没有识别到股票名称或代码, 用户输入: {user_input}")
+                return {"error": "没有识别到股票名称或代码"}
+            
+            # 查找对应的工具
+            chart_tool = None
+            for tool in self.tools:
+                if tool.name == "generate_stock_charts":
+                    chart_tool = tool
+                    break
+            
+            if not chart_tool:
+                logger.error(f"没有找到generate_stock_charts工具")
+                return {"error": "没有找到generate_stock_charts工具"}
+            
+            # 检查用户输入是否明确指定了图表类型
+            user_input = state.get("user_input", "")
+            chart_types = []
+            
+            if "k线" in user_input or "K线" in user_input:
+                chart_types.append("k_line")
+            if "走势" in user_input or "折线" in user_input or "收盘价" in user_input:
+                chart_types.append("line")
+            if "成交量" in user_input or "量能" in user_input:
+                chart_types.append("volume")
+            
+            # 如果没有明确指定，生成所有图表
+            if not chart_types:
+                chart_types = ["k_line", "line", "volume"]
+            
+            # 如果只有一个股票，直接返回结果
+            if len(stock_identifiers) == 1:
+                stock_identifier = stock_identifiers[0]
+                logger.info(f"调用生成股票图表工具, 股票: {stock_identifier}, 图表类型: {chart_types}")
+                return chart_tool.invoke({"stock_name_or_code": stock_identifier, "chart_types": chart_types})
+            
+            # 如果有多个股票，返回所有股票的图表信息
+            stock_charts = {}
+            for stock_identifier in stock_identifiers:
+                logger.info(f"调用生成股票图表工具, 股票: {stock_identifier}, 图表类型: {chart_types}")
+                result = chart_tool.invoke({"stock_name_or_code": stock_identifier, "chart_types": chart_types})
+                if "error" not in result:
+                    # 使用股票代码或名称作为键
+                    key = result.get("symbol", stock_identifier)
+                    stock_charts[key] = result
+            
+            # 如果有成功生成的图表，返回综合结果
+            if stock_charts:
+                return {
+                    "multiple_stocks": True,
+                    "stock_charts": stock_charts,
+                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                }
+            else:
+                return {"error": "无法生成任何股票的图表"}
+            
+        except Exception as e:
+            logger.error(f"调用生成股票图表工具失败: {e}")
+            return {"error": str(e)}
+    
     def _nlg_node(self, state: FinancialAgentState) -> Dict[str, Any]:
         """NLG节点 - 生成自然语言响应
         
@@ -793,12 +883,26 @@ class FinancialAgentGraph:
             # 添加图表信息到响应中
             if result.get("intent") == "stock_historical_data" and result.get("tool_result"):
                 tool_result = result.get("tool_result", {})
+                
+                # 处理直接包含图表对象的情况（来自get_stock_historical_data）
                 if "kline_chart" in tool_result:
                     mcp_response["kline_chart"] = tool_result["kline_chart"]
                 if "line_chart" in tool_result:
                     mcp_response["line_chart"] = tool_result["line_chart"]
                 if "volume_chart" in tool_result:
                     mcp_response["volume_chart"] = tool_result["volume_chart"]
+                
+                # 处理包含图表路径的情况（来自generate_stock_charts）
+                if "charts" in tool_result:
+                    charts = tool_result["charts"]
+                    if "k_line" in charts:
+                        # 这里需要加载HTML文件并转换为可显示的图表对象
+                        # 目前先添加图表路径信息
+                        mcp_response["kline_chart_path"] = charts["k_line"]
+                    if "line" in charts:
+                        mcp_response["line_chart_path"] = charts["line"]
+                    if "volume" in charts:
+                        mcp_response["volume_chart_path"] = charts["volume"]
             
             # 如果有会话存储，保存对话历史
             if self.session_storage and hasattr(self.session_storage, 'store_conversation'):
@@ -829,4 +933,3 @@ class FinancialAgentGraph:
                 "response": "抱歉，工作流执行失败。",
                 "error": str(e)
             }
-

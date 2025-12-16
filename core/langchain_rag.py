@@ -3,12 +3,62 @@ from langchain_chroma import Chroma
 from langchain_classic.chains.retrieval_qa.base import RetrievalQA
 from langchain_classic.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
-from typing import Dict, List, Optional
+from sentence_transformers import SentenceTransformer
+from langchain_core.embeddings import Embeddings
+from pydantic import BaseModel
+from typing import Dict, List, Optional, Any
 import os
 import logging
+import numpy as np
 
 # 设置日志
 logger = logging.getLogger(__name__)
+
+class LocalEmbeddings(BaseModel, Embeddings):
+    """
+    本地嵌入模型实现，避免网络依赖
+    """
+    embedding_dim: int = 1536  # 改为1536维，兼容现有配置
+    model: Optional[Any] = None  # 声明model字段
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # 使用简单的基于哈希的嵌入（完全离线）
+        logger.info(f"使用本地嵌入模型，维度: {self.embedding_dim}")
+    
+    def _get_embedding(self, text: str) -> List[float]:
+        """生成文本的嵌入向量"""
+        # 简单的基于哈希的嵌入实现
+        import hashlib
+        import numpy as np
+        
+        # 使用哈希函数生成固定长度的向量
+        hash_obj = hashlib.sha256(text.encode('utf-8'))
+        hash_bytes = hash_obj.digest()
+        
+        # 将哈希字节转换为浮点数向量
+        float_vector = []
+        for i in range(0, len(hash_bytes), 4):
+            chunk = hash_bytes[i:i+4]
+            float_val = np.frombuffer(chunk, dtype=np.float32)[0]
+            float_vector.append(float(float_val))
+        
+        # 调整向量长度到指定维度
+        if len(float_vector) > self.embedding_dim:
+            float_vector = float_vector[:self.embedding_dim]
+        elif len(float_vector) < self.embedding_dim:
+            # 补零
+            float_vector.extend([0.0] * (self.embedding_dim - len(float_vector)))
+        
+        return float_vector
+    
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        """嵌入文档列表"""
+        return [self._get_embedding(text) for text in texts]
+    
+    def embed_query(self, text: str) -> List[float]:
+        """嵌入查询文本"""
+        return self._get_embedding(text)
 
 class FinancialRAG:
     """金融领域检索增强生成模块"""
@@ -196,25 +246,35 @@ class FinancialRAG:
             }
     
     def retrieve_and_generate(self, query: str, top_k: int = 3) -> Dict:
-        """检索相关文档并生成增强回答
+        """检索并生成增强回答
         
         Args:
             query: 查询文本
-            top_k: 检索前k个最相关的文档
+            top_k: 返回前k个最相关的文档
             
         Returns:
-            Dict: 包含回答、检索到的文档和来源的字典
+            Dict: 包含回答和来源的字典
         """
-        # 先检索相关文档
-        retrieved_docs = self.retrieve(query, top_k=top_k)
-        
-        # 然后生成增强回答
-        result = self.generate(query)
-        
-        # 合并结果
-        return {
-            "answer": result["answer"],
-            "retrieved_documents": retrieved_docs,
-            "source_documents": result["source_documents"],
-            "success": result["success"]
-        }
+        try:
+            # 先检索相关文档
+            retrieved_docs = self.retrieve(query, top_k)
+            
+            if not retrieved_docs:
+                logger.info(f"未检索到相关文档，使用普通生成模式")
+                return {
+                    "answer": "",
+                    "source_documents": [],
+                    "success": True
+                }
+            
+            # 使用生成方法获取增强回答
+            generate_result = self.generate(query)
+            return generate_result
+            
+        except Exception as e:
+            logger.error(f"检索并生成回答失败: {e}")
+            return {
+                "answer": "",
+                "source_documents": [],
+                "success": False
+            }

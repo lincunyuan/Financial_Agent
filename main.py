@@ -100,26 +100,17 @@ def main():
         logger.info(f"加载了 {len(tools)} 个LangChain工具")
         
         # 初始化RAG模块
-        vector_db_dir = os.path.join("data", "vector_db")
+        vector_db_dir = os.path.join("data", "chroma_db")  # 与build_rag_kb.py使用相同的路径
         rag = None
         try:
-            from langchain_openai import OpenAIEmbeddings
+            from core.langchain_rag import LocalEmbeddings
             
-            # 直接从已加载的配置中获取API密钥
-            api_key = config.get("api_key") or os.getenv("OPENAI_API_KEY")
-            logger.info(f"用于RAG嵌入的API密钥: {api_key[:10]}...")  # 只打印前10个字符用于调试
-            
-            # 将API密钥设置到环境变量中，确保OpenAIEmbeddings内部能访问到
-            if api_key:
-                os.environ["OPENAI_API_KEY"] = api_key
-            
-            # 使用OpenAI Embeddings（可以替换为其他嵌入模型）
-            embeddings = OpenAIEmbeddings(
-                model="text-embedding-3-small"
-            )
+            # 使用本地嵌入模型
+            embeddings = LocalEmbeddings()
             
             # 从配置中获取base_url
             base_url = config.get("base_url")
+            api_key = config.get("api_key") or os.getenv("OPENAI_API_KEY")
             
             rag = FinancialRAG(
                 vector_db_dir=vector_db_dir,

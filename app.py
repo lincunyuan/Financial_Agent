@@ -121,12 +121,39 @@ if prompt := st.chat_input("请输入您的金融问题..."):
             if "kline_chart" in result and result["kline_chart"]:
                 st.markdown("### K线图")
                 st.plotly_chart(result["kline_chart"], use_container_width=True)
+            elif "kline_chart_path" in result and result["kline_chart_path"]:
+                st.markdown("### K线图")
+                # 读取HTML文件并显示
+                try:
+                    with open(result["kline_chart_path"], 'r', encoding='utf-8') as f:
+                        html_content = f.read()
+                        st.components.v1.html(html_content, height=600, scrolling=True)
+                except Exception as e:
+                    st.error(f"显示K线图失败: {e}")
             if "line_chart" in result and result["line_chart"]:
                 st.markdown("### 价格走势图")
                 st.plotly_chart(result["line_chart"], use_container_width=True)
+            elif "line_chart_path" in result and result["line_chart_path"]:
+                st.markdown("### 价格走势图")
+                # 读取HTML文件并显示
+                try:
+                    with open(result["line_chart_path"], 'r', encoding='utf-8') as f:
+                        html_content = f.read()
+                        st.components.v1.html(html_content, height=600, scrolling=True)
+                except Exception as e:
+                    st.error(f"显示价格走势图失败: {e}")
             if "volume_chart" in result and result["volume_chart"]:
                 st.markdown("### 成交量图")
                 st.plotly_chart(result["volume_chart"], use_container_width=True)
+            elif "volume_chart_path" in result and result["volume_chart_path"]:
+                st.markdown("### 成交量图")
+                # 读取HTML文件并显示
+                try:
+                    with open(result["volume_chart_path"], 'r', encoding='utf-8') as f:
+                        html_content = f.read()
+                        st.components.v1.html(html_content, height=600, scrolling=True)
+                except Exception as e:
+                    st.error(f"显示成交量图失败: {e}")
             
             # 添加助手响应到会话历史
             # 由于图表是交互式对象，只保存图表类型信息到会话历史

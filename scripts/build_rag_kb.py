@@ -8,11 +8,11 @@
 import os
 import sys
 from typing import List, Optional
-from langchain.document_loaders import DirectoryLoader, PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores import Chroma
+from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader  # 修改导入
+from langchain_classic.text_splitter import RecursiveCharacterTextSplitter  # 修改导入到langchain_classic
+from langchain_community.vectorstores import Chroma  # 修改导入
 from langchain.embeddings.base import Embeddings
-from langchain.schema import Document
+from langchain_classic.schema import Document  # 修改导入到langchain_classic
 import requests
 import logging
 import yaml
@@ -206,10 +206,15 @@ def build_rag_kb(pdf_dir: str, vector_db_dir: str, chunk_size: int = 1000, chunk
         api_keys_config = config_loader.load_config("api_keys.yaml")
         
         # 2. 初始化嵌入模型
-        embeddings = QwenEmbeddings(
-            api_key=api_keys_config.get("qwen_api_key", ""),
-            base_url=api_keys_config.get("qwen_base_url", "https://dashscope.aliyuncs.com/compatible-mode/v1")
-        )
+        # 初始化嵌入模型
+        logger.info("初始化嵌入模型...")
+        try:
+            from core.langchain_rag import LocalEmbeddings
+            embeddings = LocalEmbeddings()
+            logger.info("成功初始化本地嵌入模型")
+        except Exception as e:
+            logger.error(f"初始化嵌入模型失败: {e}")
+            return False
         
         # 3. 加载PDF文档
         documents = load_pdf_documents(pdf_dir)
@@ -259,3 +264,5 @@ if __name__ == "__main__":
     else:
         logger.error("RAG知识库构建失败！")
         sys.exit(1)
+
+

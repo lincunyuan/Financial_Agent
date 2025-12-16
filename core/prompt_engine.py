@@ -278,6 +278,29 @@ class PromptEngine:
                         context_parts.append(f"历史数据时间范围：{start_date} 至 {end_date}")
                 except Exception as e:
                     logger.error(f"处理股票历史数据失败: {e}")
+            # 检查是否是图表生成结果
+            elif 'symbol' in tool_result and 'charts' in tool_result:
+                if "【实时市场数据】" not in context_parts:
+                    context_parts.append("【实时市场数据】")
+                
+                # 构建股票信息字符串
+                stock_name = tool_result.get('input_query', '')
+                stock_symbol = tool_result.get('symbol', '未知代码')
+                charts = tool_result.get('charts', {})
+                
+                if stock_name:
+                    context_parts.append(f"股票：{stock_name} ({stock_symbol})")
+                else:
+                    context_parts.append(f"股票代码：{stock_symbol}")
+                
+                # 添加图表信息
+                context_parts.append("已生成的图表：")
+                if 'k_line' in charts:
+                    context_parts.append("- K线图已生成")
+                if 'line' in charts:
+                    context_parts.append("- 价格走势图已生成")
+                if 'volume' in charts:
+                    context_parts.append("- 成交量图已生成")
         
         # 知识库内容
         knowledge_chunks = data_sources.get('knowledge_base', [])
@@ -305,7 +328,7 @@ class PromptEngine:
     def _get_response_requirements(self, intent_analysis: Dict) -> str:
         """获取回答要求"""
         return """
-1. 基于提供的知识和数据进行回答，确保准确性。
+1. 基于提供的信息和数据进行回答，确保准确性。
 2. 保持语言简洁明了，避免使用过于专业的术语。
 3. 如果没有足够信息回答，请明确说明。
 4. 回答应具有实用性和参考价值。

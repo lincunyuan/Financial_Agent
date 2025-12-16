@@ -3,6 +3,7 @@ from langchain.tools import tool, BaseTool
 from typing import Dict, Optional, List, Any
 from datetime import datetime
 from core.tool_integration import FinancialDataAPI
+from core.chart_generator import ChartGenerator  # 添加ChartGenerator的导入
 from utils.config_loader import default_config_loader
 import logging
 
@@ -317,14 +318,120 @@ def get_stock_historical_data(stock_name_or_code: str, start_date: Optional[str]
             "input_query": stock_name_or_code
         }
 
+@tool(return_direct=False)
+def generate_stock_charts(stock_name_or_code: str, chart_types: Optional[List[str]] = None) -> Dict[str, Any]:
+    """生成股票图表（K线图、折线图、成交量图）
+    
+    Args:
+        stock_name_or_code: 股票名称或代码（如："贵州茅台"或"600519.SS"或"600519"）
+        chart_types: 要生成的图表类型列表，可选值：["k_line", "line", "volume"]，默认生成所有图表
+        
+    Returns:
+        Dict: 包含生成的图表路径信息的字典
+    """
+    try:
+        # 处理股票名称到代码的映射
+        if stock_name_or_code in STOCK_NAME_TO_CODE:
+            stock_code = STOCK_NAME_TO_CODE[stock_name_or_code]
+        elif len(stock_name_or_code) == 6 and stock_name_or_code.isdigit():
+            # 处理6位数字代码 - 支持所有沪深A股股票
+            # 000、002、300开头的股票属于深交所(.SZ)
+            # 600、601、603、605开头的股票属于上交所(.SS)
+            if stock_name_or_code.startswith(('000', '002', '300')):
+                stock_code = f"{stock_name_or_code}.SZ"
+            else:
+                stock_code = f"{stock_name_or_code}.SS"
+        elif stock_name_or_code.endswith(('.SS', '.SZ')):
+            # 已经包含交易所后缀的完整代码
+            stock_code = stock_name_or_code
+        else:
+            stock_code = stock_name_or_code
+        
+        logger.info(f"生成股票图表: {stock_code}, 类型: {chart_types}")
+        
+        # 获取历史数据
+        historical_data = financial_api.get_historical_data(stock_code)
+        if not historical_data:
+            return {"error": "无法获取历史数据", "tool_used": "generate_stock_charts"}
+        
+        # 转换数据格式：英文键名转为中文列名，以便ChartGenerator使用
+        import pandas as pd
+        df = pd.DataFrame(historical_data)
+        
+        # 处理不同数量的列（兼容可能的字段变化）
+        try:
+            if len(df.columns) == 10:
+                df.columns = ['日期', '开盘', '收盘', '最高', '最低', '成交量', '成交额', '涨跌幅', '股票代码', 'symbol']
+            elif len(df.columns) == 9:
+                df.columns = ['日期', '开盘', '收盘', '最高', '最低', '成交量', '成交额', '涨跌幅', '股票代码']
+            else:
+                logger.error(f"未知的数据列数: {len(df.columns)}")
+                return {"error": "数据格式错误"}
+                
+            # 如果有symbol列，可以保留也可以删除，这里选择保留
+            # 但确保数据包含ChartGenerator所需的所有必要列
+            required_columns = ['日期', '开盘', '最高', '最低', '收盘', '成交量', '成交额', '涨跌幅']
+            if not all(col in df.columns for col in required_columns):
+                logger.error(f"缺少必要的列: {[col for col in required_columns if col not in df.columns]}")
+                return {"error": "数据格式不完整"}
+        except Exception as e:
+            logger.error(f"转换数据格式时出错: {e}")
+            return {"error": "数据处理失败"}
+        
+        # 创建图表生成器
+        chart_generator = ChartGenerator()
+        
+        # 如果没有指定图表类型，生成所有图表
+        if not chart_types:
+            chart_types = ["k_line", "line", "volume"]
+        
+        # 生成并保存图表
+        saved_charts = {}
+        
+        # 生成K线图
+        if "k_line" in chart_types:
+            k_line_fig = chart_generator.generate_k_line_chart(stock_code, df)
+            if k_line_fig:
+                saved_charts["k_line"] = chart_generator.save_chart(k_line_fig, f"{stock_code}_kline", "html")
+        
+        # 生成收盘价折线图
+        if "line" in chart_types:
+            line_fig = chart_generator.generate_line_chart(stock_code, df)
+            if line_fig:
+                saved_charts["line"] = chart_generator.save_chart(line_fig, f"{stock_code}_line", "html")
+        
+        # 生成成交量图
+        if "volume" in chart_types:
+            volume_fig = chart_generator.generate_volume_chart(stock_code, df)
+            if volume_fig:
+                saved_charts["volume"] = chart_generator.save_chart(volume_fig, f"{stock_code}_volume", "html")
+        
+        if not saved_charts:
+            return {"error": "无法生成图表", "tool_used": "generate_stock_charts"}
+        
+        return {
+            "symbol": stock_code,
+            "charts": saved_charts,
+            "message": f"成功生成{stock_code}的图表",
+            "tool_used": "generate_stock_charts"
+        }
+        
+    except Exception as e:
+        logger.error(f"生成股票图表失败: {e}")
+        return {
+            "error": str(e),
+            "tool_used": "generate_stock_charts",
+            "input_query": stock_name_or_code
+        }
+
 # 获取所有LangChain工具
 def get_all_langchain_tools() -> List[BaseTool]:
-    """获取所有可用的LangChain工具"""
+    """获取所有LangChain工具"""
     return [
         get_stock_price,
         get_market_index,
         get_financial_news,
         get_economic_data,
-        get_stock_historical_data
+        get_stock_historical_data,
+        generate_stock_charts
     ]
-
