@@ -75,10 +75,6 @@ KEYS *
 - **`scripts/download_all_stock_data.py`** - 批量下载股票数据
 - **`scripts/generate_stock_mapping_csv.py`** - 生成股票映射表
 
-#### 6. 配置文件
-- **`config/database.yaml`** - 数据库连接配置
-- **`config/model_config.yaml`** - 大模型配置
-
 ## 功能特性
 
 - 📚 **知识库检索**：基于Chroma向量数据库的RAG知识库，支持PDF文档和结构化数据检索
@@ -175,7 +171,7 @@ save 60 10000
 dbfilename dump.rdb
 
 # RDB文件保存路径
-# Windows示例：C:\\redis\\data
+# Windows示例：C:\redis\data
 # Linux/macOS示例：/var/lib/redis
 dir /var/lib/redis
 
@@ -335,7 +331,7 @@ python main.py --user-id user123
 助手回答: 截至2024年XX月XX日，贵州茅台(600519)的股价为XXXX元...
 
 您的问题: 它和五粮液相比怎么样？
-助手回答: 贵州茅台和五粮液都是中国白酒行业的龙头企业...[对比分析]
+助手回答: 贵州茅台和五粮液都是中国白酒行业的龙头
 
 您的问题: 退出
 感谢使用，再见！
@@ -372,35 +368,6 @@ python test_conversation_history.py
 ```bash
 python scripts/test_end_to_end.py
 ```
-
-## 开发说明
-
-### 添加新的插件
-
-1. 在 `core/plugins/` 目录下创建新的插件文件，例如 `news_plugin.py`
-2. 实现 `ToolPlugin` 接口：
-   ```python
-   from core.mcp.tool_plugin_api import ToolPlugin
-
-   class NewsPlugin(ToolPlugin):
-       def __init__(self):
-           super().__init__()
-           self.plugin_name = "news_plugin"
-           self.plugin_description = "财经新闻查询插件"
-           
-       def execute(self, parameters):
-           # 实现插件逻辑
-           pass
-   ```
-3. 在 `core/plugin_manager.py` 中注册插件
-
-### 自定义LLM提供商
-
-在 `core/llm_client.py` 中添加新的提供商支持，实现相应的 `_generate_xxx` 方法。
-
-### 调整知识库检索参数
-
-修改 `core/knowledge_base.py` 中的 `retrieve_relevant_chunks` 方法的 `top_k` 参数。
 
 ## 故障排除
 
