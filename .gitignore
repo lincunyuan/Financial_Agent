@@ -34,6 +34,9 @@ logs/
 # 配置文件（包含敏感信息）
 config/api_keys.yaml
 
+# 应用缓存
+cache/
+
 # 其他
 .DS_Store
 Thumbs.db
