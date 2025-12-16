@@ -6,6 +6,8 @@ from typing import Dict, Optional, List, Any
 import logging
 from datetime import datetime, timedelta
 import json
+import os
+import time
 
 # 设置日志
 logging.basicConfig(level=logging.INFO)
@@ -363,7 +365,196 @@ class FinancialDataAPI:
             logger.error(f"获取经济数据失败: {e}")
             return None
 
+    def get_historical_data(self, symbol: str, interval: str = "1d", start_date: str = None, end_date: str = None) -> Optional[List[Dict]]:
+        """获取股票或ETF历史数据（支持缓存）"""
+        try:
+            # 处理股票代码格式
+            stock_code = symbol.replace('.SS', '').replace('.SZ', '').replace('.HK', '')
+            logger.info(f"正在处理股票代码: {symbol}，处理后: {stock_code}")
+            
+            # 判断是否为ETF（以51、15、58开头的6位数字）
+            is_etf = False
+            if len(stock_code) == 6 and stock_code.isdigit():
+                if stock_code.startswith(('51', '15', '58')):
+                    is_etf = True
+                    logger.info(f"识别为ETF: {stock_code}")
+            
+            # 设置缓存目录和文件名
+            cache_dir = "../cache/stock_data"
+            cache_file = os.path.join(cache_dir, f"{symbol}_{interval}.json")
+            logger.info(f"缓存目录: {cache_dir}，缓存文件: {cache_file}")
+            
+            # 创建缓存目录
+            if not os.path.exists(cache_dir):
+                os.makedirs(cache_dir)
+                logger.info(f"创建缓存目录: {cache_dir}")
+            
+            # 检查缓存是否有效（7天有效期）
+            cache_valid = False
+            if os.path.exists(cache_file):
+                cache_time = os.path.getmtime(cache_file)
+                if time.time() - cache_time < 7 * 24 * 3600:
+                    cache_valid = True
+                    logger.info(f"缓存有效，将加载缓存数据")
+            
+            # 加载缓存数据
+            cached_data = []
+            if cache_valid:
+                try:
+                    with open(cache_file, 'r', encoding='utf-8') as f:
+                        cached_data = json.load(f)
+                    logger.info(f"从缓存加载了 {len(cached_data)} 条历史数据")
+                    
+                    # 如果指定了日期范围，过滤数据
+                    if start_date and end_date:
+                        filtered_data = []
+                        for item in cached_data:
+                            if start_date <= item['date'] <= end_date:
+                                filtered_data.append(item)
+                        logger.info(f"按日期范围过滤后剩余 {len(filtered_data)} 条数据")
+                        return filtered_data
+                    elif start_date:
+                        filtered_data = []
+                        for item in cached_data:
+                            if item['date'] >= start_date:
+                                filtered_data.append(item)
+                        logger.info(f"按起始日期过滤后剩余 {len(filtered_data)} 条数据")
+                        return filtered_data
+                    elif end_date:
+                        filtered_data = []
+                        for item in cached_data:
+                            if item['date'] <= end_date:
+                                filtered_data.append(item)
+                        logger.info(f"按结束日期过滤后剩余 {len(filtered_data)} 条数据")
+                        return filtered_data
+                    return cached_data
+                except Exception as e:
+                    logger.error(f"加载缓存数据失败: {e}")
+                    cache_valid = False
+            
+            # 缓存无效或不存在，从API获取新数据
+            logger.info(f"缓存无效或不存在，开始从API获取新数据")
+            
+            # AkShare周期映射
+            period_map = {
+                "1d": "daily",
+                "1w": "weekly",
+                "1mo": "monthly"
+            }
+            ak_period = period_map.get(interval, "daily")
+            logger.info(f"时间周期映射: {interval} -> {ak_period}")
+            
+            # 获取历史数据
+            data = None
+            if is_etf:
+                # ETF数据
+                logger.info(f"正在获取ETF {stock_code} 的历史数据")
+                try:
+                    data = ak.fund_etf_hist_em(symbol=stock_code, period=ak_period)
+                    logger.info(f"ETF数据列名: {data.columns.tolist()}")
+                except Exception as e:
+                    logger.error(f"获取ETF数据失败: {e}")
+            else:
+                # 股票数据
+                logger.info(f"正在获取股票 {stock_code} 的历史数据")
+                try:
+                    if symbol.endswith('.SS') or symbol.endswith('.SZ'):
+                        # A股数据
+                        logger.info(f"获取A股 {stock_code} 的 {ak_period} 数据，时间范围: {start_date} 至 {end_date}")
+                        data = ak.stock_zh_a_hist(symbol=stock_code, period=ak_period)
+                        logger.info(f"A股数据列名: {data.columns.tolist()}")
+                        logger.info(f"A股数据前5行: {data.head()}")
+                    elif symbol.endswith('.HK'):
+                        # 港股数据
+                        logger.info(f"获取港股 {stock_code} 的历史数据")
+                        try:
+                            data = ak.stock_hk_hist(symbol=stock_code, period=ak_period)
+                            logger.info(f"港股数据列名: {data.columns.tolist()}")
+                        except Exception as e:
+                            logger.error(f"港股API调用失败: {e}")
+                            return []
+                except Exception as e:
+                    logger.error(f"获取股票数据失败: {e}")
+            
+            logger.info(f"获取到数据形状: {data.shape if data is not None else 'None'}")
+            
+            if data is not None and not data.empty:
+                # 转换数据格式
+                historical_data = []
+                
+                # ETF数据字段映射 - 适配不同的字段名
+                if is_etf:
+                    for _, row in data.iterrows():
+                        # 尝试多种字段名组合
+                        open_col = row.get('开盘价', row.get('开盘', 0))
+                        high_col = row.get('最高价', row.get('最高', 0))
+                        low_col = row.get('最低价', row.get('最低', 0))
+                        close_col = row.get('收盘价', row.get('收盘', 0))
+                        volume_col = row.get('成交量', row.get('成交', 0))
+                        amount_col = row.get('成交额', row.get('金额', 0))
+                        change_col = row.get('涨跌幅', row.get('涨跌', 0))
+                        
+                        # 处理日期字段
+                        date_value = row.get('日期', '')
+                        if hasattr(date_value, 'strftime'):
+                            date_str = date_value.strftime('%Y-%m-%d')
+                        else:
+                            date_str = str(date_value)
+                        
+                        historical_data.append({
+                            'date': date_str,
+                            'open': float(open_col),
+                            'high': float(high_col),
+                            'low': float(low_col),
+                            'close': float(close_col),
+                            'volume': int(volume_col) if volume_col != '-' else 0,
+                            'amount': float(amount_col) if amount_col != '-' else 0,
+                            'change': float(change_col) if change_col != '-' else 0,
+                            'symbol': symbol
+                        })
+                # 股票数据字段映射
+                else:
+                    for _, row in data.iterrows():
+                        # 处理日期字段
+                        date_value = row.get('日期', '')
+                        if hasattr(date_value, 'strftime'):
+                            date_str = date_value.strftime('%Y-%m-%d')
+                        else:
+                            date_str = str(date_value)
+                        
+                        historical_data.append({
+                            'date': date_str,
+                            'open': float(row.get('开盘', 0)),
+                            'high': float(row.get('最高', 0)),
+                            'low': float(row.get('最低', 0)),
+                            'close': float(row.get('收盘', 0)),
+                            'volume': int(row.get('成交量', 0)),
+                            'amount': float(row.get('成交额', 0)),
+                            'change': float(row.get('涨跌幅', 0)),
+                            'symbol': symbol
+                        })
+                
+                logger.info(f"转换后获取到 {len(historical_data)} 条历史数据")
+                
+                # 保存到缓存
+                try:
+                    with open(cache_file, 'w', encoding='utf-8') as f:
+                        json.dump(historical_data, f, ensure_ascii=False, indent=2)
+                    logger.info(f"历史数据已保存到缓存: {cache_file}")
+                except Exception as e:
+                    logger.error(f"保存缓存失败: {e}")
+                
+                return historical_data
+            else:
+                logger.warning(f"未获取到历史数据: {symbol}")
+                return []
+            
+        except Exception as e:
+            logger.error(f"获取历史数据失败: {e}", exc_info=True)
+            return None
 
+
+# 辅助函数部分
 def add_source_citations(response: str, sources: List[Dict], kb) -> str:
     """为回答添加来源引用标注"""
     if not sources:
