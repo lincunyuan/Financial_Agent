@@ -6,6 +6,12 @@ import jieba.posseg as pseg
 from typing import Dict, List, Tuple, Any
 import logging
 
+# 导入LangChain相关模块
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import JsonOutputParser
+from langchain_openai import ChatOpenAI
+from utils.config_loader import default_config_loader
+
 logger = logging.getLogger(__name__)
 
 class IntentRecognizer:
@@ -13,6 +19,9 @@ class IntentRecognizer:
     
     def __init__(self):
         self.logger = logging.getLogger(__name__)
+        
+        # 加载配置
+        self.config_loader = default_config_loader
         
         # 意图模式定义
         self.intent_patterns = {
@@ -54,6 +63,21 @@ class IntentRecognizer:
                 'needs_real_time_data': True,
                 'entity_extraction': True,
                 'priority': 0.7
+            },
+            'stock_historical_data': {
+                'keywords': ['历史', '日K', 'K线', '走势', '历史数据', '历史行情', '过往表现', '图表', '走势图'],
+                'patterns': [
+                    r'.*(\w+).*历史.*(K线|数据|走势|行情)',
+                    r'.*(\w+).*日K.*(线|数据|图表)',
+                    r'.*(\w+).*过往.*(表现|走势)',
+                    r'.*(\w+).*(历史|过去).*价格',
+                    r'.*(\w+).*走势图',
+                    r'.*(\w+).*图表'
+                ],
+                'needs_historical_data': True,
+                'needs_real_time_data': True,  # 添加这个设置以启用实时数据获取（图表生成）
+                'entity_extraction': True,
+                'priority': 0.8  # 提高优先级，确保历史数据查询意图优先匹配
             },
             'economic_analysis': {
                 'keywords': ['GDP', 'CPI', '经济', '通胀', '利率', '货币政策', '宏观经济'],
@@ -118,9 +142,60 @@ class IntentRecognizer:
             }
         }
         
+        # 加载股票映射文件
+        self._load_stock_mapping()
+        
         # 初始化分词词典（必须在entity_dict定义之后）
         self._init_jieba()
+        
+        # 初始化LangChain组件
+        self._init_langchain_components()
+        
+        # 检查LangChain组件的初始化状态
+        self.logger.info(f"LangChain组件状态: llm={self.llm is not None}, intent_prompt={self.intent_prompt is not None}, entity_prompt={self.entity_prompt is not None}")
+        self.logger.info("意图识别器初始化完成")
 
+    def _load_stock_mapping(self):
+        """加载股票映射文件到实体词典"""
+        import csv
+        import os
+        
+        try:
+            # 获取股票映射文件路径
+            stock_mapping_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data', 'stock_mapping.csv')
+            
+            if os.path.exists(stock_mapping_path):
+                with open(stock_mapping_path, 'r', encoding='utf-8') as f:
+                    reader = csv.reader(f)
+                    next(reader)  # 跳过表头
+                    
+                    # 统计加载的股票数量
+                    stock_count = 0
+                    
+                    for row in reader:
+                        if len(row) >= 2:
+                            stock_name = row[0].strip()
+                            stock_code = row[1].strip()
+                            
+                            # 确保股票代码格式正确
+                            if not stock_code.endswith(('.SS', '.SZ', '.HK', '.US')):
+                                # 根据A股代码规则添加交易所后缀
+                                if stock_code.startswith(('0', '3')):
+                                    stock_code += '.SZ'
+                                elif stock_code.startswith('6'):
+                                    stock_code += '.SS'
+                            
+                            # 添加到实体词典
+                            self.entity_dict['stocks'][stock_name] = stock_code
+                            stock_count += 1
+                    
+                    self.logger.info(f"成功加载 {stock_count} 只股票到实体词典")
+            else:
+                self.logger.warning(f"股票映射文件不存在: {stock_mapping_path}")
+                
+        except Exception as e:
+            self.logger.error(f"加载股票映射文件失败: {e}")
+    
     def _init_jieba(self):
         """初始化中文分词"""
         try:
@@ -136,9 +211,77 @@ class IntentRecognizer:
                 
         except Exception as e:
             self.logger.warning(f"初始化分词词典失败: {e}")
+    
+    def _init_langchain_components(self):
+        """初始化LangChain组件"""
+        try:
+            # 加载LLM配置
+            llm_config = self.config_loader.load_config("model_config.yaml")
+            self.logger.debug(f"加载的LLM配置: {llm_config}")
+            
+            # 创建ChatOpenAI实例
+            from langchain_openai import ChatOpenAI
+            self.llm = ChatOpenAI(
+                model=llm_config.get("model", "qwen-plus"),
+                temperature=0.1,
+                openai_api_base=llm_config.get("base_url"),
+                openai_api_key=llm_config.get("api_key")
+            )
+            self.logger.debug(f"LLM客户端创建成功: {self.llm}")
+            
+            # 1. 意图定义PromptTemplate
+            self.intent_prompt = PromptTemplate(
+                template="""
+                你是一个金融领域的意图识别专家。请根据用户的查询和历史对话上下文，识别出主要意图。
+                
+                可用意图列表：
+                - market_news: 查询财经新闻
+                - stock_market: 查询股市行情
+                - specific_stock: 查询特定股票
+                - stock_historical_data: 查询股票历史数据或K线图
+                - economic_analysis: 查询经济数据分析
+                - investment_advice: 查询投资建议
+                - time_query: 查询时间信息
+                - general: 一般性问题
+                
+                重要提示：
+                1. 如果当前查询中包含代词（如"它"、"这个"、"那个"等），请根据历史对话上下文确定其具体指代的实体
+                2. 务必考虑历史对话中的金融实体（如股票名称、代码等），理解用户的完整意图
+                3. 当用户查询股票的历史数据、日K线、K线图等时，应识别为stock_historical_data意图
+                
+                历史对话（如果有）：
+                {history}
+                
+                当前用户查询: {query}
+                
+                请以JSON格式返回识别结果，包含以下字段：
+                - intent: 识别出的主要意图
+                - confidence: 置信度（0-1之间的数字）
+                """,
+                input_variables=["query", "history"]
+            )
+            
+            # 2. JSON实体抽取PromptTemplate
+            self.entity_prompt = PromptTemplate(
+                template="你是一个金融领域的实体识别专家。请从用户的查询和历史对话上下文中提取出金融相关的实体。\n\n重要规则：\n1. 必须仔细分析历史对话上下文，特别是前一轮对话中提到的金融实体\n2. 如果当前查询中包含代词（如\"它\"、\"这个\"、\"那个\"等），请根据历史对话上下文明确指出其具体指代的实体名称\n3. 例如，如果上一轮对话提到\"贵州茅台\"，当前查询问\"它的市值是多少？\"，则应提取实体{{'type': 'stock_name', 'value': '贵州茅台'}}\n\n实体类型包括：\n- stock_name: 股票名称\n- stock_code: 股票代码\n- index_name: 指数名称\n- time: 时间信息\n- economic_indicator: 经济指标\n\n历史对话（如果有）：\n{history}\n\n当前用户查询: {query}\n\n请以JSON格式返回识别结果，包含以下字段：\n- entities: 实体列表，每个实体包含type和value字段\n",
+                input_variables=["query", "history"]
+            )
+            
+            # 创建JSON输出解析器
+            self.json_parser = JsonOutputParser()
+            
+            self.logger.info("LangChain组件初始化成功")
+            
+        except Exception as e:
+            self.logger.error(f"LangChain组件初始化失败: {e}", exc_info=True)
+            self.llm = None
+            self.intent_prompt = None
+            self.entity_prompt = None
 
-    def analyze(self, query: str) -> Dict:
+    def analyze(self, query: str, history: List[Dict] = None, coreferences: List[Dict] = None) -> Dict:
         """深度意图分析"""
+        history = history or []
+        coreferences = coreferences or []
         analysis = {
             'primary_intent': 'general',
             'confidence': 0.0,
@@ -150,24 +293,117 @@ class IntentRecognizer:
             'target_symbols': [],
             'target_indices': [],
             'keywords': [],
-            'intent_details': {}
+            'intent_details': {},
+            'langchain_used': False,
+            'resolved_pronouns': []  # 新增字段：存储解析后的代词
         }
         
         try:
-            # 1. 关键词匹配评分
-            keyword_scores = self._keyword_scoring(query)
+            # 1. 检查是否有代词需要解析
+            has_pronoun = any(pronoun in query for pronoun in ['它', '这个', '那个', '其', '该'])
             
-            # 2. 模式匹配评分
-            pattern_scores = self._pattern_matching(query)  # 修复这里
+            # 2. 优先使用存储的指代关系进行代词解析
+            resolved_entities = []
+            if has_pronoun:
+                resolved_entities = self._resolve_pronouns_with_coreferences(query, coreferences, history)
+                if resolved_entities:
+                    self.logger.info(f"使用存储的指代关系解析代词成功: {resolved_entities}")
+                    analysis['resolved_pronouns'] = resolved_entities  # 存储解析结果
+                    analysis['entities'] = resolved_entities  # 将解析出的实体添加到分析结果中
             
-            # 3. 实体识别
-            entities = self._extract_entities(query)
+            # 3. 如果没有存储的指代关系或解析失败，尝试使用LangChain进行意图识别
+            langchain_used = False
+            if not resolved_entities and ((self.llm and self.intent_prompt and self.entity_prompt) or has_pronoun):
+                # 如果有存储的指代关系，将其添加到历史对话中，以便LangChain可以使用
+                formatted_coreferences = ""
+                if coreferences:
+                    for coref in coreferences:
+                        formatted_coreferences += f"代词'{coref.get('pronoun')}'指代'{coref.get('value')}'({coref.get('type')})\n"
+                
+                langchain_result = self._analyze_with_langchain(query, history, coreferences=formatted_coreferences)
+                if langchain_result:
+                    analysis.update(langchain_result)
+                    langchain_used = True
+                    analysis['langchain_used'] = True
+                    self.logger.info(f"LangChain意图分析结果: {analysis['primary_intent']} (置信度: {analysis['confidence']:.2f})")
+            
+            # 初始化entities变量，确保在所有分支中都有定义
+            entities = []
+            
+            # 4. 如果LangChain不可用或没有返回结果，使用传统方法
+            if not langchain_used:
+                self.logger.info("使用传统方法进行意图分析")
+                
+                # 1. 关键词匹配评分
+                keyword_scores = self._keyword_scoring(query)
+                
+                # 2. 模式匹配评分
+                pattern_scores = self._pattern_matching(query)
+                
+                # 3. 实体识别 - 包含代词解析
+                entities = self._extract_entities(query)
+                
+                # 如果解析出了指代实体，将其与当前查询中提取的其他实体合并
+                if resolved_entities:
+                    # 将解析出的代词实体与当前查询中提取的其他实体合并
+                    entities.extend(resolved_entities)
+                    # 去重：如果同一实体被多次识别，只保留一个
+                    seen = set()
+                    unique_entities = []
+                    for entity in entities:
+                        key = (entity.get('type'), entity.get('value'))
+                        if key not in seen:
+                            seen.add(key)
+                            unique_entities.append(entity)
+                    entities = unique_entities
+                    analysis['entities'] = entities
+            
+            # 如果当前查询包含代词且没有直接识别到实体，尝试从历史对话中获取
+            if has_pronoun and not analysis.get('entities') and not entities:
+                self.logger.info(f"检测到代词但没有直接识别到实体，从历史对话中提取: {history}")
+                for item in reversed(history):
+                    # 处理不同格式的历史对话
+                    if isinstance(item, dict):
+                        # 字典格式: {'query': ..., 'response': ..., 'metadata': ...}
+                        dialogue = item
+                        # 从历史对话的metadata中提取实体
+                        if 'metadata' in dialogue and 'entities' in dialogue['metadata']:
+                            metadata_entities = dialogue['metadata']['entities']
+                            if metadata_entities:
+                                entities = metadata_entities
+                                self.logger.info(f"从历史对话metadata中提取到实体: {entities}")
+                                break
+                        # 如果metadata中没有实体，尝试从历史查询和响应中提取
+                        user_msg = dialogue.get('query', '')
+                        bot_msg = dialogue.get('response', '')
+                    else:
+                        # 元组格式: (user_msg, bot_msg)
+                        user_msg, bot_msg = item
+                    
+                    # 从历史用户消息中提取实体
+                    prev_entities = self._extract_entities(user_msg)
+                    if prev_entities:
+                        entities = prev_entities
+                        self.logger.info(f"从历史用户消息中提取到实体: {entities}")
+                        break
+                    # 从历史助手响应中提取实体
+                    prev_entities = self._extract_entities(bot_msg)
+                    if prev_entities:
+                        entities = prev_entities
+                        self.logger.info(f"从历史助手响应中提取到实体: {entities}")
+                        break
+            
             if entities:
                 analysis['entities'] = entities
                 analysis['target_symbols'] = [e['value'] for e in entities if e['type'] == 'stock']
                 analysis['target_indices'] = [e['value'] for e in entities if e['type'] == 'index']
             
-            # 4. 合并评分
+            # 4. 合并评分 - 确保在所有代码路径中都定义了评分变量
+            if 'keyword_scores' not in locals():
+                keyword_scores = self._keyword_scoring(query)
+            if 'pattern_scores' not in locals():
+                pattern_scores = self._pattern_matching(query)
+            
             combined_scores = self._combine_scores(keyword_scores, pattern_scores, entities)
             
             # 5. 确定主要意图
@@ -193,13 +429,161 @@ class IntentRecognizer:
             # 6. 提取关键词
             analysis['keywords'] = self._extract_keywords(query)
             
-            self.logger.info(f"意图分析结果: {analysis['primary_intent']} (置信度: {analysis['confidence']:.2f})")
+            self.logger.info(f"传统意图分析结果: {analysis['primary_intent']} (置信度: {analysis['confidence']:.2f})")
             
+            # 生成解析后的查询（替换代词）
+            resolved_query = query
+            resolved_pronouns = analysis.get('resolved_pronouns', [])
+            if resolved_pronouns:
+                # 按代词长度降序排序，避免短代词被长代词包含
+                resolved_pronouns.sort(key=lambda x: len(x.get('value', '')), reverse=True)
+                for resolved in resolved_pronouns:
+                    pronoun = resolved.get('pronoun')
+                    value = resolved.get('value')
+                    if pronoun and value and pronoun in resolved_query:
+                        resolved_query = resolved_query.replace(pronoun, value)
+                        self.logger.info(f"替换代词 '{pronoun}' 为 '{value}'")
+            analysis['resolved_query'] = resolved_query
         except Exception as e:
             self.logger.error(f"意图分析失败: {e}")
             analysis['error'] = str(e)
+            analysis['resolved_query'] = query  # 即使出错，也要返回原始查询
         
         return analysis
+    
+    def _resolve_pronouns_with_coreferences(self, query: str, coreferences: List[Dict], history: List[Dict] = None) -> List[Dict]:
+        """使用存储的指代关系进行代词解析
+        
+        Args:
+            query: 用户查询
+            coreferences: 指代关系列表
+            history: 历史对话
+            
+        Returns:
+            List[Dict]: 解析后的实体列表
+        """
+        resolved_entities = []
+        
+        # 1. 从查询中提取代词
+        pronouns = [pronoun for pronoun in ['它', '这个', '那个', '其', '该'] if pronoun in query]
+        
+        if not pronouns:
+            return resolved_entities
+            
+        # 2. 根据代词过滤指代关系
+        filtered_coreferences = []
+        for pronoun in pronouns:
+            for coref in coreferences:
+                if coref.get('pronoun') == pronoun:
+                    filtered_coreferences.append(coref)
+        
+        # 3. 按时间倒序排序（优先使用最近的指代关系）
+        filtered_coreferences.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+        
+        # 4. 应用就近原则，选择最近的指代关系
+        for coref in filtered_coreferences:
+            # 获取当前指代关系的代词
+            pronoun = coref.get('pronoun')
+            
+            # 创建实体对象，包含pronoun字段
+            entity = {
+                'pronoun': pronoun,  # 添加代词字段
+                'value': coref.get('value'),
+                'type': coref.get('type', 'stock'),
+                'start_pos': query.find(pronoun),
+                'end_pos': query.find(pronoun) + len(pronoun),
+                'confidence': 0.95,  # 较高的置信度，因为是从存储的指代关系中解析的
+                'code': coref.get('value'),
+                'name': coref.get('value')  # 添加名称字段
+            }
+            resolved_entities.append(entity)
+            
+            # 如果已经解析了所有代词，停止
+            if len(resolved_entities) >= len(pronouns):
+                break
+                
+        return resolved_entities
+
+    def _analyze_with_langchain(self, query: str, history: List[Tuple] = None, coreferences: str = "") -> Dict:
+        """使用LangChain进行意图分析和实体提取"""
+        try:
+            result = {}
+            
+            # 将历史对话格式化为易读的文本形式
+            formatted_history = ""
+            if coreferences:
+                formatted_history += f"【代词指代关系】\n{coreferences}\n"
+            
+            if history:
+                for i, item in enumerate(history):
+                    # 处理不同格式的历史对话
+                    if isinstance(item, dict):
+                        # 字典格式: {'query': ..., 'response': ..., 'metadata': ...}
+                        user_msg = item.get('query', '')
+                        bot_msg = item.get('response', '')
+                    else:
+                        # 元组格式: (user_msg, bot_msg)
+                        user_msg, bot_msg = item
+                    formatted_history += f"用户[{i+1}]: {user_msg}\n助手[{i+1}]: {bot_msg}\n"
+            
+            # 1. 意图识别 - 包含历史对话上下文
+            context = {"query": query, "history": formatted_history}
+            intent_chain = self.intent_prompt | self.llm | self.json_parser
+            intent_result = intent_chain.invoke(context)
+            
+            result['primary_intent'] = intent_result.get('intent', 'general')
+            result['confidence'] = intent_result.get('confidence', 0.0)
+            
+            # 2. 实体提取 - 包含历史对话上下文
+            context = {"query": query, "history": formatted_history}
+            entity_chain = self.entity_prompt | self.llm | self.json_parser
+            entity_result = entity_chain.invoke(context)
+            
+            entities = entity_result.get('entities', [])
+            result['entities'] = entities
+            
+            # 3. 转换实体格式并设置目标符号
+            result['target_symbols'] = []
+            result['target_indices'] = []
+            
+            for entity in entities:
+                entity_type = entity.get('type')
+                value = entity.get('value')
+                
+                if entity_type in ['stock_name', 'stock_code']:
+                    # 转换为系统内部的股票代码格式
+                    if entity_type == 'stock_name' and value in self.entity_dict['stocks']:
+                        result['target_symbols'].append(self.entity_dict['stocks'][value])
+                    elif entity_type == 'stock_code':
+                        # 确保股票代码格式正确
+                        if len(value) == 6 and value.isdigit():
+                            # 正确的交易所映射：000开头、002开头、300开头为深交所(.SZ)，600开头为上交所(.SS)
+                            result['target_symbols'].append(f"{value}.SZ" if value.startswith(('000', '002', '300')) else f"{value}.SS")
+                
+                elif entity_type == 'index_name' and value in self.entity_dict['indices']:
+                    result['target_indices'].append(self.entity_dict['indices'][value])
+            
+            # 4. 设置意图相关的配置
+            intent_config = self.intent_patterns.get(result['primary_intent'], {})
+            for key in ['needs_real_time_data', 'needs_knowledge_base', 
+                       'needs_historical_context', 'is_simple_time_query']:
+                if key in intent_config:
+                    result[key] = intent_config[key]
+            
+            # 设置特定目标
+            if result['primary_intent'] == 'stock_market' and 'target_indices' in intent_config:
+                result['target_indices'] = intent_config['target_indices']
+            elif result['primary_intent'] == 'economic_analysis' and 'economic_indicators' in intent_config:
+                result['economic_indicators'] = intent_config['economic_indicators']
+            
+            # 5. 提取关键词
+            result['keywords'] = self._extract_keywords(query)
+            
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"使用LangChain进行意图分析失败: {e}")
+            return None
 
     def _keyword_scoring(self, query: str) -> Dict[str, float]:
         """关键词匹配评分"""
@@ -314,7 +698,7 @@ class IntentRecognizer:
             combined_score = (keyword_score * 0.6 + pattern_score * 0.4)
             
             # 实体增强
-            if entities and intent in ['specific_stock', 'stock_market']:
+            if entities and intent in ['specific_stock', 'stock_market', 'stock_historical_data']:
                 entity_boost = min(len(entities) * 0.1, 0.3)  # 每个实体增加0.1，最多0.3
                 combined_score += entity_boost
             

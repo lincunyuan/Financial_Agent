@@ -1,27 +1,58 @@
 # core/prompt_engine.py
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Optional
+import logging
+
+# 设置日志
+logger = logging.getLogger(__name__)
 
 class PromptEngine:
     """智能提示词引擎"""
+    
+    def __init__(self, config=None, rag=None):
+        """初始化提示词引擎
+        
+        Args:
+            config: 配置项，用于定制提示词生成
+            rag: RAG模块，用于检索增强生成
+        """
+        self.config = config or {}
+        self.rag = rag  # 添加RAG模块支持
     
     def construct_prompt(self, query: str, history: List[tuple], 
                          data_sources: Dict, intent_analysis: Dict) -> str:
         """构建智能提示词"""
         
-        # 1. 系统角色定义
+        # 1. 处理代词解析 - 如果有解析后的代词，替换用户查询中的代词
+        resolved_query = query
+        resolved_pronouns = intent_analysis.get('resolved_pronouns', [])
+        if resolved_pronouns:
+            logger.info(f"处理代词解析: {resolved_pronouns}")
+            # 按代词长度降序排序，避免短代词被长代词包含
+            resolved_pronouns.sort(key=lambda x: len(x.get('value', '')), reverse=True)
+            for resolved in resolved_pronouns:
+                pronoun = resolved.get('pronoun')
+                value = resolved.get('value')
+                if pronoun and value and pronoun in resolved_query:
+                    resolved_query = resolved_query.replace(pronoun, value)
+                    logger.info(f"替换代词 '{pronoun}' 为 '{value}'")
+        
+        # 将resolved_query添加到意图分析结果中
+        intent_analysis['resolved_query'] = resolved_query
+        
+        # 2. 系统角色定义
         system_role = self._get_system_role(intent_analysis)
         
-        # 2. 时间上下文
+        # 3. 时间上下文
         time_context = self._get_time_context()
         
-        # 3. 数据上下文
+        # 4. 数据上下文
         data_context = self._format_data_context(data_sources, intent_analysis)
         
-        # 4. 历史上下文
+        # 5. 历史上下文
         history_context = self._format_history_context(history)
         
-        # 5. 回答要求
+        # 6. 回答要求
         response_requirements = self._get_response_requirements(intent_analysis)
         
         prompt = f"""{system_role}
@@ -35,7 +66,7 @@ class PromptEngine:
 {history_context}
 
 # 当前用户问题
-用户：{query}
+用户：{resolved_query}
 
 # 回答要求
 {response_requirements}
@@ -43,6 +74,80 @@ class PromptEngine:
 请开始回答："""
         
         return prompt
+        
+    def generate_with_rag(self, query: str, history: List[tuple] = None, 
+                         data_sources: Dict = None, intent_analysis: Dict = None) -> Dict:
+        """使用RAG生成增强回答
+        
+        Args:
+            query: 用户查询
+            history: 对话历史
+            data_sources: 数据源
+            intent_analysis: 意图分析结果
+            
+        Returns:
+            Dict: 包含回答和来源的字典
+        """
+        if not self.rag:
+            logger.warning("RAG模块未初始化，无法进行检索增强生成")
+            # 回退到普通提示词生成
+            prompt = self.construct_prompt(query, history or [], 
+                                          data_sources or {}, 
+                                          intent_analysis or {})
+            return {
+                "prompt": prompt,
+                "has_rag_context": False
+            }
+        
+        try:
+            logger.info(f"使用RAG生成增强回答，查询: {query}")
+            
+            # 使用RAG检索并生成回答
+            rag_result = self.rag.retrieve_and_generate(query)
+            
+            # 如果检索到相关文档，添加到数据源
+            if rag_result.get("source_documents"):
+                # 构建RAG上下文
+                rag_context = [
+                    {"content": doc["content"]} 
+                    for doc in rag_result['source_documents'][:3]  # 最多使用3个相关文档
+                ]
+                
+                # 更新数据源
+                data_sources = data_sources or {}
+                data_sources["knowledge_base"] = data_sources.get("knowledge_base", []) + rag_context
+                
+                # 构建增强提示词
+                prompt = self.construct_prompt(query, history or [], 
+                                              data_sources, 
+                                              intent_analysis or {})
+                
+                return {
+                    "prompt": prompt,
+                    "has_rag_context": True,
+                    "source_documents": rag_result['source_documents'],
+                    "rag_result": rag_result
+                }
+            else:
+                # 如果没有检索到相关文档，使用普通提示词
+                prompt = self.construct_prompt(query, history or [], 
+                                              data_sources or {}, 
+                                              intent_analysis or {})
+                return {
+                    "prompt": prompt,
+                    "has_rag_context": False
+                }
+                
+        except Exception as e:
+            logger.error(f"RAG生成失败: {e}")
+            # 回退到普通提示词生成
+            prompt = self.construct_prompt(query, history or [], 
+                                          data_sources or {}, 
+                                          intent_analysis or {})
+            return {
+                "prompt": prompt,
+                "has_rag_context": False
+            }
     
     def _get_system_role(self, intent_analysis: Dict) -> str:
         """根据意图获取系统角色"""
@@ -67,8 +172,24 @@ class PromptEngine:
         """格式化数据上下文"""
         context_parts = []
         
-        # 实时数据
+        # 确保data_sources是字典
+        if not isinstance(data_sources, dict):
+            logger.error(f"data_sources不是字典类型: {type(data_sources)}")
+            return "当前无特定数据上下文"
+            
+        # 实时数据（支持两种键名：'real_time_data'和'realtime_data'）
         real_time_data = data_sources.get('real_time_data', {})
+        
+        # 确保real_time_data是字典
+        if not isinstance(real_time_data, dict):
+            logger.error(f"real_time_data不是字典类型: {type(real_time_data)}")
+            real_time_data = {}
+        else:
+            # 合并两种键名的数据
+            realtime_data = data_sources.get('realtime_data', {})
+            if isinstance(realtime_data, dict):
+                real_time_data.update(realtime_data)
+        
         if real_time_data:
             context_parts.append("【实时市场数据】")
             
@@ -77,6 +198,86 @@ class PromptEngine:
                 
             if 'financial_news' in real_time_data:
                 context_parts.append(self._format_news_summary(real_time_data['financial_news']))
+        
+        # 检查是否有工具调用结果的实时数据
+        tool_result = real_time_data
+        if tool_result:
+            # 检查是否是多个股票的价格数据
+            if tool_result.get('multiple_stocks'):
+                if "【实时市场数据】" not in context_parts:
+                    context_parts.append("【实时市场数据】")
+                
+                stock_prices = tool_result.get('stock_prices', {})
+                if isinstance(stock_prices, dict):
+                    for stock_code, stock_data in stock_prices.items():
+                        if isinstance(stock_data, dict):
+                            context_parts.append(self._format_stock_price(stock_data))
+                            context_parts.append("---")  # 分隔不同股票的数据
+                    
+                    # 移除最后一个分隔符
+                    if context_parts and context_parts[-1] == "---":
+                        context_parts.pop()
+            # 检查是否是单个股票价格数据
+            elif 'symbol' in tool_result and 'price' in tool_result:
+                if "【实时市场数据】" not in context_parts:
+                    context_parts.append("【实时市场数据】")
+                context_parts.append(self._format_stock_price(tool_result))
+            # 检查是否是市场指数数据
+            elif 'index_name' in tool_result and 'value' in tool_result:
+                if "【实时市场数据】" not in context_parts:
+                    context_parts.append("【实时市场数据】")
+                context_parts.append(self._format_market_index(tool_result))
+            # 检查是否是股票历史数据（K线数据）
+            elif 'symbol' in tool_result and 'data' in tool_result and tool_result['data']:
+                if "【实时市场数据】" not in context_parts:
+                    context_parts.append("【实时市场数据】")
+                
+                import pandas as pd
+                try:
+                    # 将历史数据转换为DataFrame
+                    df = pd.DataFrame(tool_result['data'])
+                    
+                    # 获取股票名称和代码
+                    stock_name = tool_result.get('input_query', '')
+                    stock_symbol = tool_result.get('symbol', '未知代码')
+                    
+                    # 获取最近30天的数据（如果数据不足30天则全部使用）
+                    recent_data = df.tail(30) if len(df) > 30 else df
+                    
+                    # 检查是否有中文列名（收盘价相关）
+                    close_price_col = None
+                    price_cols = ['close', '收盘价', '收盘', '鏀剁洏']  # 可能的收盘价列名，包括中文乱码情况
+                    
+                    for col in price_cols:
+                        if col in df.columns:
+                            close_price_col = col
+                            break
+                    
+                    # 如果找到收盘价列，计算价格区间
+                    if close_price_col:
+                        recent_min = recent_data[close_price_col].min()
+                        recent_max = recent_data[close_price_col].max()
+                        current_price = df[close_price_col].iloc[-1] if len(df) > 0 else 0
+                        
+                        # 构建历史数据统计信息
+                        if stock_name:
+                            context_parts.append(f"股票：{stock_name} ({stock_symbol})")
+                        else:
+                            context_parts.append(f"股票代码：{stock_symbol}")
+                        
+                        context_parts.append(f"当前收盘价：{current_price:.2f}元")
+                        context_parts.append(f"近30天价格区间：{recent_min:.2f}元 - {recent_max:.2f}元")
+                        # 获取时间范围
+                        start_date = end_date = "未知"
+                        if '日期' in df.columns:
+                            start_date = df['日期'].min()
+                            end_date = df['日期'].max()
+                        elif 'date' in df.columns:
+                            start_date = df['date'].min()
+                            end_date = df['date'].max()
+                        context_parts.append(f"历史数据时间范围：{start_date} 至 {end_date}")
+                except Exception as e:
+                    logger.error(f"处理股票历史数据失败: {e}")
         
         # 知识库内容
         knowledge_chunks = data_sources.get('knowledge_base', [])
@@ -137,3 +338,51 @@ class PromptEngine:
             news_parts.append("")
         
         return "\n".join(news_parts).strip()
+    
+    def _format_stock_price(self, stock_data: Dict) -> str:
+        """格式化股票价格数据"""
+        if not stock_data:
+            return "无股票价格数据"
+        
+        parts = []
+        symbol = stock_data.get('symbol', '未知代码')
+        stock_name = stock_data.get('input_query', '')
+        price = stock_data.get('price', 0)
+        change = stock_data.get('change', 0)  # 已经是百分比形式，无需乘以100
+        change_amount = stock_data.get('change_amount', 0)
+        volume = stock_data.get('volume', 0)
+        timestamp = stock_data.get('timestamp', '')
+        
+        # 构建股票信息字符串
+        stock_info = f"股票：{stock_name} ({symbol})"
+        price_info = f"当前价格：{price}元"
+        change_info = f"涨跌幅：{change:.2f}% ({change_amount:+}元)"
+        volume_info = f"成交量：{volume:,}股"
+        
+        if stock_name:
+            parts.append(stock_info)
+        parts.extend([price_info, change_info, volume_info])
+        
+        if timestamp:
+            parts.append(f"更新时间：{timestamp}")
+        
+        return "\n".join(parts)
+    
+    def _format_market_index(self, index_data: Dict) -> str:
+        """格式化市场指数数据"""
+        if not index_data:
+            return "无市场指数数据"
+        
+        parts = []
+        index_name = index_data.get('index_name', '未知指数')
+        value = index_data.get('value', 0)
+        change = index_data.get('change', 0)  # 已经是百分比形式，无需乘以100
+        change_amount = index_data.get('change_amount', 0)
+        
+        parts.extend([
+            f"指数：{index_name}",
+            f"当前值：{value}",
+            f"涨跌幅：{change:.2f}% ({change_amount:+})"
+        ])
+        
+        return "\n".join(parts)

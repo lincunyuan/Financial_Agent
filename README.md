@@ -1,39 +1,142 @@
+
+```bash
+python run_frontend.py
+```
+
+
+以管理员身份打开新的 PowerShell
+# 切换到 MySQL 目录
+cd D:\program\mysql-9.5.0-winx64
+
+# 启动服务
+net start MySQL9.5
+
+# 使用临时密码登录
+mysql -u root -p
+
+-- 退出
+EXIT;
+
+
+
+redis
+cd D:\program\redis
+
+
+# 连接到Redis
+redis-cli -h localhost -p 6379
+
+# 输入密码认证
+AUTH 123
+
+# 现在可以执行命令了
+INFO
+KEYS *
+
+
 # 财经知识助手 Agent
 
-一个基于RAG（检索增强生成）技术的智能财经知识助手，支持知识库检索、实时数据查询和对话历史管理。
+一个基于RAG（检索增强生成）技术的智能财经知识助手，支持知识库检索、实时数据查询和对话历史管理，具备完善的插件系统和多模态交互能力。
+
+## 项目完善状态
+
+### ✅ 已完成的功能模块
+
+#### 1. 核心模块
+- **`core/agent_coordinator.py`** - Agent主协调器，管理对话流程和工具调用
+- **`core/data_processor.py`** - 数据处理器，处理各种数据格式
+- **`core/intent_recognizer.py`** - 意图识别器，识别用户查询意图和实体
+- **`core/knowledge_base.py`** - 知识库管理，支持向量检索和相关度排序
+- **`core/llm_client.py`** - LLM客户端，支持OpenAI API和本地模型（如Ollama）
+- **`core/prompt_engine.py`** - 提示词引擎，动态生成高质量提示词
+- **`core/session_manager.py`** - 会话管理器，使用Redis管理会话状态和对话历史
+
+#### 2. LangChain集成
+- **`core/langchain_graph.py`** - 基于LangChain的状态图实现
+- **`core/langchain_rag.py`** - LangChain RAG实现
+- **`core/langchain_tools.py`** - 自定义工具封装
+
+#### 3. 模块化组件平台
+- **`core/mcp/`** - 插件系统框架
+  - `context_storage_api.py` - 上下文存储API
+  - `data_source_api.py` - 数据源API
+  - `plugin_manager.py` - 插件管理器
+  - `tool_plugin_api.py` - 工具插件API
+
+#### 4. 具体插件实现
+- **`core/plugins/`**
+  - `stock_price_plugin.py` - 股票价格查询插件
+  - `market_index_plugin.py` - 市场指数查询插件
+
+#### 5. 工具脚本
+- **`scripts/init_kb.py`** - 知识库初始化脚本
+- **`scripts/data_sync.py`** - 数据同步脚本
+- **`scripts/build_rag_kb.py`** - 构建RAG知识库
+- **`scripts/download_all_stock_data.py`** - 批量下载股票数据
+- **`scripts/generate_stock_mapping_csv.py`** - 生成股票映射表
+
+#### 6. 配置文件
+- **`config/database.yaml`** - 数据库连接配置
+- **`config/model_config.yaml`** - 大模型配置
 
 ## 功能特性
 
-- 📚 **知识库检索**：基于Milvus向量数据库和MySQL的RAG知识库
-- 💬 **对话管理**：使用Redis存储和管理对话历史
-- 🔌 **工具集成**：支持股票数据、市场指数等实时API调用
+- 📚 **知识库检索**：基于Chroma向量数据库的RAG知识库，支持PDF文档和结构化数据检索
+- 💬 **对话管理**：使用Redis存储和管理对话历史，支持上下文理解和多轮对话
+- 🔌 **工具集成**：支持股票数据、市场指数等实时API调用，采用插件化架构
 - 🤖 **大模型支持**：支持OpenAI API和本地模型（如Ollama）
 - 📖 **来源引用**：自动标注知识库来源，提高回答可信度
+- 📊 **实时数据**：集成AKShare等财经数据源，提供实时股票行情和市场数据
+- 🔍 **意图识别**：基于规则和模型的混合意图识别系统，支持复杂查询理解
+- 📱 **Web界面**：基于Streamlit的用户友好型Web界面
 
-## 项目结构
+## 项目架构
 
 ```
 financial_assistant_agent/
 ├── config/                 # 配置文件目录
-│   ├── api_keys.yaml      # API密钥配置
 │   ├── database.yaml      # 数据库连接配置
 │   └── model_config.yaml  # 大模型配置
 ├── core/                   # 核心模块
 │   ├── agent_coordinator.py  # Agent主协调器
+│   ├── data_processor.py     # 数据处理器
+│   ├── intent_recognizer.py  # 意图识别器
 │   ├── knowledge_base.py     # 知识库管理
+│   ├── langchain_graph.py    # LangChain工作流图
+│   ├── langchain_rag.py      # LangChain RAG实现
+│   ├── langchain_tools.py    # LangChain工具集成
 │   ├── llm_client.py         # LLM客户端
-│   ├── session_manager.py    # 会话管理
+│   ├── mcp/                  # 模块化组件平台
+│   │   ├── context_storage_api.py  # 上下文存储API
+│   │   ├── data_source_api.py      # 数据源API
+│   │   ├── plugin_manager.py       # 插件管理器
+│   │   └── tool_plugin_api.py      # 工具插件API
+│   ├── plugins/              # 具体插件实现
+│   │   ├── market_index_plugin.py  # 市场指数插件
+│   │   └── stock_price_plugin.py   # 股票价格插件
+│   ├── prompt_engine.py      # 提示词引擎
+│   ├── session_manager.py    # 会话管理器
 │   └── tool_integration.py   # 工具集成
+├── data/                   # 数据目录
+│   ├── pdfs/               # PDF文档存储
+│   ├── stock_mapping.csv   # 股票代码映射表
+│   └── vector_db/          # 向量数据库存储
 ├── scripts/                # 工具脚本
-│   ├── init_kb.py         # 初始化知识库
-│   └── data_sync.py       # 数据同步脚本
+│   ├── build_rag_kb.py     # 构建RAG知识库
+│   ├── data_sync.py        # 数据同步脚本
+│   ├── download_all_stock_data.py  # 下载全量股票数据
+│   ├── generate_stock_mapping_csv.py  # 生成股票映射表
+│   ├── init_kb.py          # 初始化知识库
+│   └── test_*.py           # 各种测试脚本
 ├── utils/                  # 工具模块
-│   ├── config_loader.py   # 配置加载器
-│   ├── embedding_utils.py # 向量化工具
-│   ├── logging.py         # 日志管理
-│   └── text_processing.py # 文本处理
-├── main.py                # 主程序入口
-└── requirements.txt       # 依赖包列表
+│   ├── config_loader.py    # 配置加载器
+│   ├── embedding_utils.py  # 向量化工具
+│   ├── logging.py          # 日志管理
+│   └── text_processing.py  # 文本处理
+├── app.py                  # Streamlit Web应用入口
+├── main.py                 # 命令行应用入口
+├── requirements.txt        # 依赖包列表
+└── setup_models.bat        # 模型设置脚本
 ```
 
 ## 安装步骤
@@ -41,9 +144,8 @@ financial_assistant_agent/
 ### 1. 环境要求
 
 - Python 3.8+
-- MySQL 5.7+ 或 8.0+
-- Redis 6.0+
-- Milvus 2.0+
+- Redis 6.0+（用于会话管理）
+- MySQL 5.7+ 或 8.0+（可选，用于结构化数据存储）
 
 ### 2. 安装Python依赖
 
@@ -53,27 +155,60 @@ pip install -r requirements.txt
 
 ### 3. 安装和配置数据库
 
-#### MySQL
+#### Redis安装与配置
 
-创建数据库：
+下载并安装Redis（Windows用户可使用Redis for Windows）。
+
+##### Redis持久化配置
+
+为确保会话数据不丢失，建议配置Redis持久化：
+
+```conf
+# 保存900秒（15分钟）内有至少1个键被修改
+save 900 1
+# 保存300秒（5分钟）内有至少10个键被修改
+save 300 10
+# 保存60秒（1分钟）内有至少10000个键被修改
+save 60 10000
+
+# RDB文件名称
+dbfilename dump.rdb
+
+# RDB文件保存路径
+# Windows示例：C:\\redis\\data
+# Linux/macOS示例：/var/lib/redis
+dir /var/lib/redis
+
+# 启用AOF持久化
+appendonly yes
+
+# AOF文件名称
+appendfilename "appendonly.aof"
+
+# AOF持久化策略（每秒将缓冲区内容写入磁盘）
+appendfsync everysec
+
+# 自动重写AOF文件的配置
+auto-aof-rewrite-percentage 100
+auto-aof-rewrite-min-size 64mb
+```
+
+**启动Redis服务**：
+
+```bash
+# Windows
+redis-server redis.windows.conf
+
+# Linux
+sudo systemctl restart redis-server
+```
+
+#### MySQL配置（可选）
+
+如果需要使用MySQL存储结构化数据，创建数据库：
+
 ```sql
-CREATE DATABASE financial_rag;
-```
-
-#### Redis
-
-确保Redis服务已启动：
-```bash
-redis-server
-```
-
-#### Milvus
-
-参考 [Milvus安装文档](https://milvus.io/docs/install_standalone-docker.md) 安装Milvus。
-
-使用Docker快速启动：
-```bash
-docker run -d --name milvus-standalone -p 19530:19530 -p 9091:9091 milvusdb/milvus:latest
+CREATE DATABASE financial_rag CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
 ### 4. 配置项目
@@ -81,19 +216,26 @@ docker run -d --name milvus-standalone -p 19530:19530 -p 9091:9091 milvusdb/milv
 #### 4.1 配置数据库连接
 
 编辑 `config/database.yaml`：
+
 ```yaml
 mysql:
   host: "localhost"
   user: "root"
   password: "your_password"  # 填入MySQL密码
   database: "financial_rag"
+
+redis:
+  host: "localhost"
+  port: 6379
+  password: ""  # Redis密码（如果有）
+  db: 0
+
+vector_db:
+  type: "chroma"
+  persist_directory: "./data/vector_db"
 ```
 
-#### 4.2 配置API密钥
-
-编辑 `config/api_keys.yaml`，填入相应的API密钥（如需要）。
-
-#### 4.3 配置大模型
+#### 4.2 配置大模型
 
 编辑 `config/model_config.yaml`：
 
@@ -102,6 +244,7 @@ mysql:
 provider: "openai"
 api_key: "your_openai_api_key"  # 或设置环境变量 OPENAI_API_KEY
 model: "gpt-3.5-turbo"
+temperature: 0.7
 ```
 
 **使用本地模型（Ollama）：**
@@ -109,56 +252,90 @@ model: "gpt-3.5-turbo"
 provider: "local"
 base_url: "http://localhost:11434"
 model: "llama2"
+temperature: 0.7
 ```
 
-## 使用指南
+## 使用方法
 
 ### 1. 初始化知识库
 
-首先初始化知识库（创建数据库表和Milvus集合）：
+首次使用前，初始化向量数据库：
 
 ```bash
 python scripts/init_kb.py
 ```
 
-### 2. 添加知识库内容
+### 2. 构建RAG知识库
 
-将财经新闻或文档添加到知识库：
+导入PDF文档到知识库：
 
 ```bash
-# 同步单个URL
-python scripts/data_sync.py --urls https://example.com/financial-news-1
-
-# 同步多个URL
-python scripts/data_sync.py --urls https://example.com/news-1 https://example.com/news-2
-
-# 从文件读取URL列表（每行一个URL）
-python scripts/data_sync.py --file urls.txt
+# 将PDF文件放入data/pdfs/目录后执行
+python scripts/build_rag_kb.py
 ```
 
-### 3. 运行主程序
+### 3. 生成股票映射表
 
-启动财经助手Agent：
+```bash
+python scripts/generate_stock_mapping_csv.py
+```
+
+### 4. 运行应用
+
+#### 4.1 Web界面（推荐）
+
+启动Streamlit Web应用：
+
+```bash
+python app.py
+```
+
+或使用快捷脚本：
+
+```bash
+python run_frontend.py
+```
+
+访问 `http://localhost:8501` 使用Web界面。
+
+#### 4.2 命令行界面
+
+启动命令行交互模式：
 
 ```bash
 python main.py
 ```
 
-或指定用户ID：
+指定用户ID：
 
 ```bash
 python main.py --user-id user123
 ```
 
-### 4. 使用示例
+## 使用示例
 
-启动后会进入交互式对话模式：
+### Web界面示例
+
+1. 打开浏览器访问 `http://localhost:8501`
+2. 在输入框中输入问题，例如：
+   - "贵州茅台的股价是多少？"
+   - "它和酒鬼酒谁的表现更好？"
+   - "上证指数今天的走势如何？"
+3. 查看助手的回答，包含实时数据和知识库引用
+
+### 命令行示例
 
 ```
 欢迎使用财经知识助手Agent！输入'退出'结束对话。
 
 您的问题: 什么是股票市场？
-助手回答: [基于知识库的回答，包含来源引用]
+助手回答: 股票市场是股票发行和交易的场所...[详细回答]
+
+您的问题: 贵州茅台的股价是多少？
+助手回答: 截至2024年XX月XX日，贵州茅台(600519)的股价为XXXX元...
+
+您的问题: 它和五粮液相比怎么样？
+助手回答: 贵州茅台和五粮液都是中国白酒行业的龙头企业...[对比分析]
 
 您的问题: 退出
 感谢使用，再见！
@@ -166,63 +343,56 @@ python main.py --user-id user123
 
 ## 测试指南
 
-### 单元测试
-
-由于项目结构已完整，您可以开始进行测试：
-
-### 1. 测试数据库连接
+### 1. 测试Redis连接
 
 ```bash
-# 测试MySQL连接
-python -c "from core.knowledge_base import FinancialKnowledgeBase; kb = FinancialKnowledgeBase(); print('MySQL连接成功'); kb.close_connections()"
-
-# 测试Redis连接
 python -c "from core.session_manager import RedisSessionManager; sm = RedisSessionManager(); print('Redis连接成功')"
 ```
 
-### 2. 测试知识库初始化
+### 2. 测试意图识别
 
 ```bash
-python scripts/init_kb.py
+python -c "from core.intent_recognizer import IntentRecognizer; ir = IntentRecognizer(); result = ir.recognize_intent('贵州茅台的股价是多少？'); print(f'意图识别结果: {result}')"
 ```
 
-### 3. 测试配置加载
+### 3. 测试股票查询插件
 
 ```bash
-python -c "from utils.config_loader import default_config_loader; print(default_config_loader.load_all_configs())"
+python scripts/test_stock_query.py
 ```
 
-### 4. 测试向量化
+### 4. 测试对话历史功能
 
 ```bash
-python -c "from utils.embedding_utils import EmbeddingGenerator; gen = EmbeddingGenerator(); vec = gen.encode('测试文本'); print(f'向量维度: {vec.shape}')"
+python test_conversation_history.py
 ```
 
-### 5. 完整功能测试
+### 5. 端到端测试
 
-1. **初始化知识库**
-   ```bash
-   python scripts/init_kb.py
-   ```
-
-2. **添加测试数据**
-   ```bash
-   # 创建一个测试URL文件
-   echo "https://example.com/financial-news" > test_urls.txt
-   python scripts/data_sync.py --file test_urls.txt
-   ```
-
-3. **运行主程序并测试对话**
-   ```bash
-   python main.py
-   ```
+```bash
+python scripts/test_end_to_end.py
+```
 
 ## 开发说明
 
-### 添加新的数据源
+### 添加新的插件
 
-1. 在 `core/tool_integration.py` 中添加新的API客户端
-2. 在 `core/agent_coordinator.py` 的 `_get_relevant_tool_data` 方法中添加调用逻辑
+1. 在 `core/plugins/` 目录下创建新的插件文件，例如 `news_plugin.py`
+2. 实现 `ToolPlugin` 接口：
+   ```python
+   from core.mcp.tool_plugin_api import ToolPlugin
+
+   class NewsPlugin(ToolPlugin):
+       def __init__(self):
+           super().__init__()
+           self.plugin_name = "news_plugin"
+           self.plugin_description = "财经新闻查询插件"
+           
+       def execute(self, parameters):
+           # 实现插件逻辑
+           pass
+   ```
+3. 在 `core/plugin_manager.py` 中注册插件
 
 ### 自定义LLM提供商
 
@@ -232,34 +402,39 @@ python -c "from utils.embedding_utils import EmbeddingGenerator; gen = Embedding
 
 修改 `core/knowledge_base.py` 中的 `retrieve_relevant_chunks` 方法的 `top_k` 参数。
 
-## 注意事项
-
-1. **API密钥安全**：不要将包含真实API密钥的配置文件提交到版本控制系统。建议使用环境变量或在 `.gitignore` 中排除配置文件。
-
-2. **数据库连接**：确保MySQL、Redis和Milvus服务在运行前已启动。
-
-3. **模型配置**：如果没有配置LLM API，系统将使用模拟模式运行，主要用于测试知识库检索功能。
-
-4. **向量模型**：默认使用 `all-MiniLM-L6-v2`（英文）或 `paraphrase-multilingual-MiniLM-L12-v2`（中英文），可根据需要调整。
-
 ## 故障排除
 
-### 问题：Milvus连接失败
-- 检查Milvus服务是否运行：`docker ps | grep milvus`
-- 确认端口19530是否开放
-
-### 问题：MySQL连接失败
-- 检查MySQL服务是否运行
-- 确认用户名、密码和数据库名称是否正确
-
 ### 问题：Redis连接失败
-- 检查Redis服务是否运行：`redis-cli ping`
-- 确认端口6379是否开放
+- 检查Redis服务是否启动：`redis-cli ping`
+- 确认配置文件中的Redis连接参数是否正确
+- 检查防火墙设置，确保端口6379可访问
+
+### 问题：向量数据库初始化失败
+- 检查 `data/vector_db/` 目录是否存在且有写入权限
+- 确认Chroma数据库依赖是否正确安装
+
+### 问题：股票数据查询失败
+- 检查AKShare是否正确安装：`pip install akshare`
+- 确认网络连接正常，AKShare需要网络访问
 
 ### 问题：LLM调用失败
 - 检查API密钥是否正确配置
 - 确认网络连接正常
 - 查看日志文件了解详细错误信息
+
+## 注意事项
+
+1. **服务必须运行**
+   - Redis服务需要运行（用于会话管理）
+   - MySQL服务可选（仅用于结构化数据存储）
+
+2. **配置文件需要填写**
+   - `config/database.yaml` 中的配置需要填写
+   - `config/model_config.yaml` 中的LLM配置需要填写（或使用环境变量）
+
+3. **如果没有配置LLM**
+   - 系统会使用模拟模式运行
+   - 可以测试知识库检索功能，但回答是模拟的
 
 ## 许可证
 
@@ -268,4 +443,3 @@ MIT License
 ## 贡献
 
 欢迎提交Issue和Pull Request！
-

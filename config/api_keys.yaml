@@ -1,19 +1,15 @@
 # 第三方API密钥配置
 # 请将实际的API密钥填入以下字段
 
-# 股票数据API密钥（示例：Alpha Vantage, Yahoo Finance等）
-stock_api_key: "your_stock_api_key_here"
 
-# 市场指数API密钥
-market_api_key: "your_market_api_key_here"
-
-# 新闻API密钥
-news_api_key: "your_news_api_key_here"
 
 # 其他API密钥
 # other_api_key: "your_other_api_key_here"
 
 # config/api_keys.yaml
+
+
+
 
 # ==================== 股票数据API ====================
 alpha_vantage:
