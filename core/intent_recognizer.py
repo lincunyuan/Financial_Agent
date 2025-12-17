@@ -177,6 +177,10 @@ class IntentRecognizer:
                             stock_name = row[0].strip()
                             stock_code = row[1].strip()
                             
+                            # 修复股票代码格式 - 去除可能的sh/sz前缀
+                            if stock_code.startswith(('sh', 'sz')):
+                                stock_code = stock_code[2:]
+                            
                             # 确保股票代码格式正确
                             if not stock_code.endswith(('.SS', '.SZ', '.HK', '.US')):
                                 # 根据A股代码规则添加交易所后缀

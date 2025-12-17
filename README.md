@@ -412,5 +412,67 @@ MIT License
 欢迎提交Issue和Pull Request！
 
 
+## 代码推送指南
+
+### SSH配置与代码推送流程
+
+当您需要向GitHub仓库推送代码时，按照以下步骤操作：
+
+### 1. 确保SSH代理正在运行（Windows系统）
+首先需要启动SSH代理，让Git能够自动使用您的SSH密钥：
+```powershell
+# 启动SSH代理服务
+Start-Service ssh-agent
+
+# 将SSH密钥添加到代理
+ssh-add ~/.ssh/id_rsa
+```
+
+如果`Start-Service`命令失败（如权限问题），可以尝试：
+```powershell
+# 使用Git Bash提供的ssh-agent
+ssh-agent bash -c 'ssh-add ~/.ssh/id_rsa; bash'
+```
+
+### 2. 检查远程仓库配置（可选）
+确认您的远程仓库URL仍然是SSH格式：
+```powershell
+git remote -v
+```
+
+如果输出显示`https://`开头的URL，需要切换回SSH格式：
+```powershell
+git remote set-url origin git@github.com:lincunyuan/Financial_Agent.git
+```
+
+### 3. 添加更改并提交
+```powershell
+# 添加所有修改的文件到暂存区
+git add -A
+
+# 提交更改
+git commit -m "您的提交信息"
+```
+
+### 4. 推送代码
+```powershell
+# 推送到远程仓库的main分支
+git push origin master:main
+```
+或如果您的本地分支已经与远程分支关联：
+```powershell
+git push
+```
+
+### 故障排除：
+如果推送时出现`Permission denied (publickey)`错误：
+1. 确保SSH代理正在运行且密钥已添加：`ssh-add -l`（应显示您的密钥）
+2. 检查公钥是否已正确添加到GitHub账户
+3. 确认远程仓库URL是正确的SSH格式
+
+### 简化流程（推荐）：
+您可以将SSH代理启动和密钥添加的步骤添加到PowerShell配置文件中，这样每次打开终端都会自动完成这些设置。
+
+
 ipconfig /flushdns
 git push origin master:main

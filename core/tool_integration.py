@@ -180,17 +180,9 @@ class FinancialDataAPI:
             }
     
     def get_stock_price(self, symbol: str, time: Optional[datetime] = None) -> Optional[Dict]:
-        """获取股票实时价格（优先使用本地缓存，其次使用AkShare，最后使用Alpha Vantage），并提供近期表现分析和建议"""
+        """获取股票实时价格（优先使用API查询，失败时使用本地缓存），并提供近期表现分析的建议"""
         try:
-            # 优先从本地缓存获取
-            cache_data = self._get_stock_price_from_cache(symbol)
-            if cache_data:
-                # 分析近期表现
-                performance = self.analyze_stock_performance(symbol)
-                cache_data["performance_analysis"] = performance
-                return cache_data
-            
-            # 缓存未命中，使用AkShare获取
+            # 优先从AkShare API获取最新数据
             ak_data = self._get_stock_price_akshare(symbol)
             if ak_data:
                 # 分析近期表现
@@ -198,7 +190,15 @@ class FinancialDataAPI:
                 ak_data["performance_analysis"] = performance
                 return ak_data
             
-            # AkShare失败，尝试使用Alpha Vantage
+            # AkShare失败，尝试使用本地缓存
+            cache_data = self._get_stock_price_from_cache(symbol)
+            if cache_data:
+                # 分析近期表现
+                performance = self.analyze_stock_performance(symbol)
+                cache_data["performance_analysis"] = performance
+                return cache_data
+            
+            # 缓存获取失败，尝试使用Alpha Vantage
             alpha_data = self._get_stock_price_alpha_vantage(symbol)
             if alpha_data:
                 # 分析近期表现
@@ -206,6 +206,7 @@ class FinancialDataAPI:
                 alpha_data["performance_analysis"] = performance
                 return alpha_data
             
+            # 都失败了，返回None
             return None
         except Exception as e:
             logger.error(f"获取股票价格失败 {symbol}: {str(e)}")
@@ -338,45 +339,130 @@ class FinancialDataAPI:
             if symbol.endswith('.SS') or symbol.endswith('.SZ'):
                 # A股数据
                 stock_code = symbol.replace('.SS', '').replace('.SZ', '')
-                data = ak.stock_zh_a_spot_em()
+                # 去掉前缀（如sh, sz）
+                if stock_code.startswith('sh') or stock_code.startswith('sz'):
+                    stock_code = stock_code[2:]
+                elif stock_code.startswith('SSE') or stock_code.startswith('SZSE'):
+                    stock_code = stock_code[3:]
+                
+                # 步骤1：检查是否有当天的缓存文件且不超过30分钟
+                today = datetime.now().strftime('%Y%m%d')
+                cache_file = f"stock_data/akshare_stock_data_{today}.csv"
+                
+                use_cache = False
+                if os.path.exists(cache_file):
+                    # 检查缓存文件的修改时间
+                    file_time = os.path.getmtime(cache_file)
+                    current_time = time.time()
+                    # 如果缓存文件不超过30分钟，使用缓存
+                    if (current_time - file_time) < 1800:  # 30分钟 = 1800秒
+                        logger.info(f"使用当天缓存文件: {cache_file}")
+                        # 从缓存文件读取数据
+                        data = pd.read_csv(cache_file)
+                        use_cache = True
+                    else:
+                        logger.info(f"缓存文件超过30分钟，重新获取数据: {cache_file}")
+                
+                if not use_cache:
+                    logger.info("没有有效缓存文件，调用AkShare API获取数据")
+                    # 调用API获取数据
+                    data = ak.stock_zh_a_spot_em()
+                    # 保存为当天的缓存文件
+                    data.to_csv(cache_file, index=False, encoding='utf-8')
+                    logger.info(f"已保存当天数据到缓存文件: {cache_file}")
+                    
                 stock_data = data[data['代码'] == stock_code]
                 
                 if not stock_data.empty:
-                    return {
+                    # 获取数据行
+                    row = stock_data.iloc[0]
+                    
+                    # 构建返回结果，使用try-except处理可能缺失的字段
+                    result = {
                         'symbol': symbol,
-                        'price': float(stock_data.iloc[0]['最新价']),
-                        'change': float(stock_data.iloc[0]['涨跌幅']),
-                        'change_amount': float(stock_data.iloc[0]['涨跌额']),
-                        'volume': int(stock_data.iloc[0]['成交量']),
-                        'amount': float(stock_data.iloc[0]['成交额']),
-                        'high': float(stock_data.iloc[0]['最高价']),
-                        'low': float(stock_data.iloc[0]['最低价']),
-                        'open': float(stock_data.iloc[0]['今开']),
-                        'prev_close': float(stock_data.iloc[0]['昨收']),
+                        'price': float(row['最新价']),
+                        'change': float(row['涨跌幅']),
+                        'change_amount': float(row['涨跌额']),
+                        'volume': int(row['成交量']),
                         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                        'source': 'akshare'
+                        'source': 'akshare_daily_cache' if use_cache else 'akshare'
                     }
+                    
+                    # 尝试获取其他可选字段
+                    try:
+                        result['amount'] = float(row['成交额'])
+                    except (KeyError, ValueError, TypeError):
+                        result['amount'] = 0.0
+                        
+                    try:
+                        result['high'] = float(row['最高价'] if '最高价' in row else row['最高'])
+                    except (KeyError, ValueError, TypeError):
+                        result['high'] = float(row['最新价'])
+                        
+                    try:
+                        result['low'] = float(row['最低价'] if '最低价' in row else row['最低'])
+                    except (KeyError, ValueError, TypeError):
+                        result['low'] = float(row['最新价'])
+                        
+                    try:
+                        result['open'] = float(row['今开'])
+                    except (KeyError, ValueError, TypeError):
+                        result['open'] = float(row['最新价'])
+                        
+                    try:
+                        result['prev_close'] = float(row['昨收'])
+                    except (KeyError, ValueError, TypeError):
+                        result['prev_close'] = float(row['最新价'])
+                    
+                    return result
                     
             elif symbol.endswith('.HK'):
                 # 港股数据
                 stock_code = symbol.replace('.HK', '')
-                data = ak.stock_hk_spot_em()
+                
+                # 步骤1：检查是否有当天的缓存文件
+                today = datetime.now().strftime('%Y%m%d')
+                cache_file = f"stock_data/akshare_hk_stock_data_{today}.csv"
+                
+                if os.path.exists(cache_file):
+                    logger.info(f"使用当天港股缓存文件: {cache_file}")
+                    # 从缓存文件读取数据
+                    data = pd.read_csv(cache_file)
+                else:
+                    logger.info("没有当天港股缓存文件，调用AkShare API获取数据")
+                    # 调用API获取数据
+                    data = ak.stock_hk_spot_em()
+                    # 保存为当天的缓存文件
+                    data.to_csv(cache_file, index=False, encoding='utf-8')
+                    logger.info(f"已保存当天港股数据到缓存文件: {cache_file}")
+                
                 stock_data = data[data['代码'] == stock_code]
                 
                 if not stock_data.empty:
-                    return {
+                    # 获取数据行
+                    row = stock_data.iloc[0]
+                    
+                    result = {
                         'symbol': symbol,
-                        'price': float(stock_data.iloc[0]['最新价']),
-                        'change': float(stock_data.iloc[0]['涨跌幅']),
-                        'volume': int(stock_data.iloc[0]['成交量']),
+                        'price': float(row['最新价']),
+                        'change': float(row['涨跌幅']),
+                        'change_amount': float(row['涨跌额']),
+                        'volume': int(row['成交量']),
                         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                        'source': 'akshare'
+                        'source': 'akshare' if not os.path.exists(cache_file) else 'akshare_daily_cache'
                     }
                     
+                    # 尝试获取其他可选字段
+                    try:
+                        result['amount'] = float(row['成交额'])
+                    except (KeyError, ValueError, TypeError):
+                        result['amount'] = 0.0
+                        
+                    return result
+                    
         except Exception as e:
-            logger.warning(f"AkShare获取股票数据失败 {symbol}: {e}")
-            
-        return None
+            logger.error(f"使用AkShare获取股票价格失败 {symbol}: {str(e)}")
+            return None
 
     def _get_stock_price_alpha_vantage(self, symbol: str) -> Optional[Dict]:
         """使用Alpha Vantage获取股票数据（主要美股）"""

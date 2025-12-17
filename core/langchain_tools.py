@@ -63,7 +63,29 @@ def load_stock_mapping():
         
         # 从CSV文件加载股票映射
         df = pd.read_csv(csv_file_path, encoding='utf-8-sig')
-        STOCK_NAME_TO_CODE = dict(zip(df['股票名称'], df['股票代码']))
+        
+        # 修复股票代码格式并构建映射
+        stock_mapping = {}
+        for _, row in df.iterrows():
+            if len(row) >= 2:
+                stock_name = row['股票名称'].strip()
+                stock_code = row['股票代码'].strip()
+                
+                # 修复股票代码格式 - 去除可能的sh/sz前缀
+                if stock_code.startswith(('sh', 'sz')):
+                    stock_code = stock_code[2:]
+                
+                # 确保股票代码格式正确
+                if not stock_code.endswith(('.SS', '.SZ', '.HK', '.US')):
+                    # 根据A股代码规则添加交易所后缀
+                    if stock_code.startswith(('0', '3')):
+                        stock_code += '.SZ'
+                    elif stock_code.startswith('6'):
+                        stock_code += '.SS'
+                
+                stock_mapping[stock_name] = stock_code
+        
+        STOCK_NAME_TO_CODE = stock_mapping
         logger.info(f"成功从CSV文件加载了 {len(STOCK_NAME_TO_CODE)} 条股票映射记录")
         
     except Exception as e:
