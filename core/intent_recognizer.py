@@ -183,17 +183,26 @@ class IntentRecognizer:
                             
                             # 确保股票代码格式正确
                             if not stock_code.endswith(('.SS', '.SZ', '.HK', '.US')):
-                                # 根据A股代码规则添加交易所后缀
-                                if stock_code.startswith(('0', '3')):
-                                    stock_code += '.SZ'
-                                elif stock_code.startswith('6'):
-                                    stock_code += '.SS'
+                                # 根据股票/ETF代码规则添加交易所后缀
+                                if len(stock_code) == 6:
+                                    if stock_code.startswith(('51', '159')):
+                                        # ETF代码（51开头的是沪市ETF，159开头的是深市ETF）
+                                        stock_code += '.SS' if stock_code.startswith('51') else '.SZ'
+                                    elif stock_code.startswith('0'):
+                                        # 深市股票
+                                        stock_code += '.SZ'
+                                    elif stock_code.startswith(('3', '5')):
+                                        # 创业板(3开头)或深市ETF(5开头)
+                                        stock_code += '.SZ'
+                                    elif stock_code.startswith('6'):
+                                        # 沪市股票
+                                        stock_code += '.SS'
                             
                             # 添加到实体词典
                             self.entity_dict['stocks'][stock_name] = stock_code
                             stock_count += 1
                     
-                    self.logger.info(f"成功加载 {stock_count} 只股票到实体词典")
+                    self.logger.info(f"成功加载 {stock_count} 只股票/ETF到实体词典")
             else:
                 self.logger.warning(f"股票映射文件不存在: {stock_mapping_path}")
                 
@@ -203,9 +212,14 @@ class IntentRecognizer:
     def _init_jieba(self):
         """初始化中文分词"""
         try:
-            # 添加金融领域词典
+            # 添加金融领域词典（包括股票和ETF）
             financial_terms = list(self.entity_dict['stocks'].keys()) + list(self.entity_dict['indices'].keys())
             for term in financial_terms:
+                jieba.add_word(term)
+            
+            # 添加ETF相关词汇和格式
+            etf_terms = ['ETF', 'etf', '黄金ETF', '黄金etf', 'ETF基金', '指数基金']
+            for term in etf_terms:
                 jieba.add_word(term)
             
             # 添加自定义词典
@@ -544,28 +558,80 @@ class IntentRecognizer:
             entity_result = entity_chain.invoke(context)
             
             entities = entity_result.get('entities', [])
-            result['entities'] = entities
+            result['entities'] = entities  # 先保存原始实体
             
-            # 3. 转换实体格式并设置目标符号
+            # 5. 转换实体格式并设置目标符号
             result['target_symbols'] = []
             result['target_indices'] = []
             
+            updated_entities = []
             for entity in entities:
                 entity_type = entity.get('type')
                 value = entity.get('value')
                 
                 if entity_type in ['stock_name', 'stock_code']:
                     # 转换为系统内部的股票代码格式
-                    if entity_type == 'stock_name' and value in self.entity_dict['stocks']:
-                        result['target_symbols'].append(self.entity_dict['stocks'][value])
+                    if entity_type == 'stock_name':
+                        # 支持大小写变体匹配
+                        matched_code = None
+                        # 检查原始值
+                        if value in self.entity_dict['stocks']:
+                            matched_code = self.entity_dict['stocks'][value]
+                        # 检查小写变体
+                        elif value.lower() in self.entity_dict['stocks']:
+                            matched_code = self.entity_dict['stocks'][value.lower()]
+                        # 检查大写变体
+                        elif value.upper() in self.entity_dict['stocks']:
+                            matched_code = self.entity_dict['stocks'][value.upper()]
+                        
+                        if matched_code:
+                            # 检查是否是ETF
+                            is_etf = False
+                            code_part = matched_code.split('.')[0]
+                            if len(code_part) == 6:
+                                if code_part.startswith(('51', '5', '159')):
+                                    is_etf = True
+                            
+                            # 更新实体信息
+                            updated_entity = entity.copy()
+                            updated_entity['type'] = 'etf' if is_etf else 'stock'
+                            updated_entity['value'] = matched_code
+                            updated_entity['name'] = value
+                            updated_entity['source'] = 'LangChain+词典匹配'
+                            updated_entity['confidence'] = 0.9
+                            
+                            updated_entities.append(updated_entity)
+                            result['target_symbols'].append(matched_code)
+                        else:
+                            updated_entities.append(entity)
                     elif entity_type == 'stock_code':
                         # 确保股票代码格式正确
                         if len(value) == 6 and value.isdigit():
                             # 正确的交易所映射：000开头、002开头、300开头为深交所(.SZ)，600开头为上交所(.SS)
-                            result['target_symbols'].append(f"{value}.SZ" if value.startswith(('000', '002', '300')) else f"{value}.SS")
-                
+                            standardized_code = f"{value}.SZ" if value.startswith(('000', '002', '300')) else f"{value}.SS"
+                            result['target_symbols'].append(standardized_code)
+                            
+                            # 更新实体信息
+                            updated_entity = entity.copy()
+                            updated_entity['value'] = standardized_code
+                            
+                            # 检查是否是ETF
+                            is_etf = False
+                            if value.startswith(('51', '5', '159')):
+                                is_etf = True
+                            updated_entity['type'] = 'etf_code' if is_etf else 'stock_code'
+                            
+                            updated_entities.append(updated_entity)
+                        else:
+                            updated_entities.append(entity)
                 elif entity_type == 'index_name' and value in self.entity_dict['indices']:
                     result['target_indices'].append(self.entity_dict['indices'][value])
+                    updated_entities.append(entity)
+                else:
+                    updated_entities.append(entity)
+            
+            # 使用更新后的实体列表
+            result['entities'] = updated_entities
             
             # 4. 设置意图相关的配置
             intent_config = self.intent_patterns.get(result['primary_intent'], {})
@@ -652,11 +718,21 @@ class IntentRecognizer:
             words = pseg.cut(query)
             
             for word, flag in words:
-                # 识别股票
+                # 识别股票和ETF
                 if word in self.entity_dict['stocks']:
+                    # 检查是否是ETF
+                    stock_code = self.entity_dict['stocks'][word]
+                    is_etf = False
+                    
+                    # 检查代码格式是否符合ETF特征
+                    code_part = stock_code.split('.')[0]
+                    if len(code_part) == 6:
+                        if code_part.startswith(('51', '5', '159')):
+                            is_etf = True
+                    
                     entities.append({
-                        'type': 'stock',
-                        'value': self.entity_dict['stocks'][word],
+                        'type': 'etf' if is_etf else 'stock',
+                        'value': stock_code,
                         'name': word,
                         'source': '词典匹配',
                         'confidence': 0.9
@@ -672,17 +748,84 @@ class IntentRecognizer:
                         'confidence': 0.9
                     })
                 
-                # 识别数字代码（股票代码模式）
+                # 识别数字代码（股票/ETF代码模式）
                 elif flag == 'm' and len(word) >= 4 and word.isdigit():
-                    # 简单判断是否为股票代码
-                    if len(word) == 6:  # A股代码
+                    if len(word) == 6:  # A股/ETF代码
+                        # 检查是否是ETF代码
+                        is_etf = False
+                        if word.startswith(('51', '5', '159')):
+                            is_etf = True
+                        
                         entities.append({
-                            'type': 'stock_code',
-                            'value': word + '.SS' if word.startswith(('0', '3')) else word + '.SZ',
-                            'name': f'股票{word}',
+                            'type': 'etf_code' if is_etf else 'stock_code',
+                            'value': word + '.SZ' if word.startswith(('0', '3')) else word + '.SS',
+                            'name': f'ETF{word}' if is_etf else f'股票{word}',
                             'source': '数字识别',
                             'confidence': 0.6
                         })
+                
+                # 识别ETF特定名称模式
+                elif 'etf' in word.lower() or 'ETF' in word:
+                    # 尝试直接在实体词典中查找（考虑大小写变体）
+                    matched = False
+                    
+                    # 检查原始词是否在词典中
+                    if word in self.entity_dict['stocks']:
+                        stock_code = self.entity_dict['stocks'][word]
+                        entities.append({
+                            'type': 'etf',
+                            'value': stock_code,
+                            'name': word,
+                            'source': 'ETF名称识别',
+                            'confidence': 0.8
+                        })
+                        matched = True
+                    # 检查大小写变体
+                    elif word.lower() in self.entity_dict['stocks']:
+                        stock_code = self.entity_dict['stocks'][word.lower()]
+                        entities.append({
+                            'type': 'etf',
+                            'value': stock_code,
+                            'name': word,
+                            'source': 'ETF名称识别',
+                            'confidence': 0.75
+                        })
+                        matched = True
+                    elif word.upper() in self.entity_dict['stocks']:
+                        stock_code = self.entity_dict['stocks'][word.upper()]
+                        entities.append({
+                            'type': 'etf',
+                            'value': stock_code,
+                            'name': word,
+                            'source': 'ETF名称识别',
+                            'confidence': 0.75
+                        })
+                        matched = True
+                    
+                    # 如果没有匹配到，尝试提取核心名称
+                    if not matched:
+                        # 提取ETF名称（去掉ETF后缀）
+                        etf_name = word.replace('ETF', '').replace('etf', '').strip()
+                        if etf_name:
+                            # 检查核心名称是否在实体词典中
+                            if etf_name in self.entity_dict['stocks']:
+                                stock_code = self.entity_dict['stocks'][etf_name]
+                                entities.append({
+                                    'type': 'etf',
+                                    'value': stock_code,
+                                    'name': word,
+                                    'source': 'ETF名称识别',
+                                    'confidence': 0.7
+                                })
+                            else:
+                                # 直接使用名称作为查询关键词
+                                entities.append({
+                                    'type': 'etf',
+                                    'value': word,
+                                    'name': word,
+                                    'source': 'ETF名称识别',
+                                    'confidence': 0.6
+                                })
         
         except Exception as e:
             self.logger.warning(f"实体识别失败: {e}")

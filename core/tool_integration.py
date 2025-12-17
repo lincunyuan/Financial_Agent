@@ -336,8 +336,15 @@ class FinancialDataAPI:
     def _get_stock_price_akshare(self, symbol: str) -> Optional[Dict]:
         """使用AkShare获取股票数据"""
         try:
+            # 检查是否是ETF查询（通过股票名称或代码判断）
+            is_etf_query = False
+            # 如果symbol不是标准的股票代码格式（如"黄金etf"），可能是ETF查询
+            if not (symbol.endswith('.SS') or symbol.endswith('.SZ') or symbol.endswith('.HK') or symbol.endswith('.US')):
+                is_etf_query = True
+                etf_name = symbol
+            
             if symbol.endswith('.SS') or symbol.endswith('.SZ'):
-                # A股数据
+                # A股数据或ETF数据
                 stock_code = symbol.replace('.SS', '').replace('.SZ', '')
                 # 去掉前缀（如sh, sz）
                 if stock_code.startswith('sh') or stock_code.startswith('sz'):
@@ -345,38 +352,127 @@ class FinancialDataAPI:
                 elif stock_code.startswith('SSE') or stock_code.startswith('SZSE'):
                     stock_code = stock_code[3:]
                 
-                # 步骤1：检查是否有当天的缓存文件且不超过30分钟
+                # 检查是否是ETF代码
+                # 5开头的6位数字可能是ETF（深圳市场）
+                if len(stock_code) == 6 and (stock_code.startswith('5') or stock_code.startswith('15') or stock_code.startswith('51')):
+                    is_etf_query = True
+                    etf_code = stock_code
+                else:
+                    # 步骤1：检查是否有当天的缓存文件且不超过30分钟
+                    today = datetime.now().strftime('%Y%m%d')
+                    cache_file = f"stock_data/akshare_stock_data_{today}.csv"
+                    
+                    use_cache = False
+                    if os.path.exists(cache_file):
+                        # 检查缓存文件的修改时间
+                        file_time = os.path.getmtime(cache_file)
+                        current_time = time.time()
+                        # 如果缓存文件不超过30分钟，使用缓存
+                        if (current_time - file_time) < 1800:  # 30分钟 = 1800秒
+                            logger.info(f"使用当天缓存文件: {cache_file}")
+                            # 从缓存文件读取数据
+                            data = pd.read_csv(cache_file)
+                            use_cache = True
+                        else:
+                            logger.info(f"缓存文件超过30分钟，重新获取数据: {cache_file}")
+                    
+                    if not use_cache:
+                        logger.info("没有有效缓存文件，调用AkShare API获取数据")
+                        # 调用API获取数据
+                        data = ak.stock_zh_a_spot_em()
+                        # 保存为当天的缓存文件
+                        data.to_csv(cache_file, index=False, encoding='utf-8')
+                        logger.info(f"已保存当天数据到缓存文件: {cache_file}")
+                        
+                    stock_data = data[data['代码'] == stock_code]
+                    
+                    if not stock_data.empty:
+                        # 获取数据行
+                        row = stock_data.iloc[0]
+                        
+                        # 构建返回结果，使用try-except处理可能缺失的字段
+                        result = {
+                            'symbol': symbol,
+                            'price': float(row['最新价']),
+                            'change': float(row['涨跌幅']),
+                            'change_amount': float(row['涨跌额']),
+                            'volume': int(row['成交量']),
+                            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                            'source': 'akshare_daily_cache' if use_cache else 'akshare'
+                        }
+                        
+                        # 尝试获取其他可选字段
+                        try:
+                            result['amount'] = float(row['成交额'])
+                        except (KeyError, ValueError, TypeError):
+                            result['amount'] = 0.0
+                            
+                        try:
+                            result['high'] = float(row['最高价'] if '最高价' in row else row['最高'])
+                        except (KeyError, ValueError, TypeError):
+                            result['high'] = float(row['最新价'])
+                            
+                        try:
+                            result['low'] = float(row['最低价'] if '最低价' in row else row['最低'])
+                        except (KeyError, ValueError, TypeError):
+                            result['low'] = float(row['最新价'])
+                            
+                        try:
+                            result['open'] = float(row['今开'])
+                        except (KeyError, ValueError, TypeError):
+                            result['open'] = float(row['最新价'])
+                            
+                        try:
+                            result['prev_close'] = float(row['昨收'])
+                        except (KeyError, ValueError, TypeError):
+                            result['prev_close'] = float(row['最新价'])
+                        
+                        return result
+            
+            # 处理ETF查询
+            if is_etf_query:
+                logger.info(f"处理ETF查询: {symbol}")
+                
+                # 步骤1：检查是否有当天的ETF缓存文件且不超过30分钟
                 today = datetime.now().strftime('%Y%m%d')
-                cache_file = f"stock_data/akshare_stock_data_{today}.csv"
+                etf_cache_file = f"stock_data/akshare_etf_data_{today}.csv"
                 
                 use_cache = False
-                if os.path.exists(cache_file):
+                if os.path.exists(etf_cache_file):
                     # 检查缓存文件的修改时间
-                    file_time = os.path.getmtime(cache_file)
+                    file_time = os.path.getmtime(etf_cache_file)
                     current_time = time.time()
                     # 如果缓存文件不超过30分钟，使用缓存
                     if (current_time - file_time) < 1800:  # 30分钟 = 1800秒
-                        logger.info(f"使用当天缓存文件: {cache_file}")
+                        logger.info(f"使用当天ETF缓存文件: {etf_cache_file}")
                         # 从缓存文件读取数据
-                        data = pd.read_csv(cache_file)
+                        etf_data = pd.read_csv(etf_cache_file)
                         use_cache = True
                     else:
-                        logger.info(f"缓存文件超过30分钟，重新获取数据: {cache_file}")
+                        logger.info(f"ETF缓存文件超过30分钟，重新获取数据: {etf_cache_file}")
                 
                 if not use_cache:
-                    logger.info("没有有效缓存文件，调用AkShare API获取数据")
-                    # 调用API获取数据
-                    data = ak.stock_zh_a_spot_em()
+                    logger.info("没有有效ETF缓存文件，调用AkShare API获取数据")
+                    # 调用API获取ETF数据
+                    etf_data = ak.fund_etf_spot_em()
                     # 保存为当天的缓存文件
-                    data.to_csv(cache_file, index=False, encoding='utf-8')
-                    logger.info(f"已保存当天数据到缓存文件: {cache_file}")
-                    
-                stock_data = data[data['代码'] == stock_code]
+                    etf_data.to_csv(etf_cache_file, index=False, encoding='utf-8')
+                    logger.info(f"已保存当天ETF数据到缓存文件: {etf_cache_file}")
                 
-                if not stock_data.empty:
-                    # 获取数据行
-                    row = stock_data.iloc[0]
-                    
+                # 查询ETF数据
+                if 'etf_name' in locals():
+                    # 通过名称查询ETF
+                    etf_result = etf_data[etf_data['名称'].str.contains(etf_name, na=False)]
+                    if not etf_result.empty:
+                        # 获取第一只匹配的ETF
+                        row = etf_result.iloc[0]
+                else:
+                    # 通过代码查询ETF
+                    etf_result = etf_data[etf_data['代码'] == etf_code]
+                    if not etf_result.empty:
+                        row = etf_result.iloc[0]
+                
+                if not etf_result.empty:
                     # 构建返回结果，使用try-except处理可能缺失的字段
                     result = {
                         'symbol': symbol,
@@ -385,7 +481,7 @@ class FinancialDataAPI:
                         'change_amount': float(row['涨跌额']),
                         'volume': int(row['成交量']),
                         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                        'source': 'akshare_daily_cache' if use_cache else 'akshare'
+                        'source': 'akshare_etf_cache' if use_cache else 'akshare_etf'
                     }
                     
                     # 尝试获取其他可选字段
@@ -405,12 +501,12 @@ class FinancialDataAPI:
                         result['low'] = float(row['最新价'])
                         
                     try:
-                        result['open'] = float(row['今开'])
+                        result['open'] = float(row['开盘价'])
                     except (KeyError, ValueError, TypeError):
                         result['open'] = float(row['最新价'])
                         
                     try:
-                        result['prev_close'] = float(row['昨收'])
+                        result['prev_close'] = float(row[' 昨收'])
                     except (KeyError, ValueError, TypeError):
                         result['prev_close'] = float(row['最新价'])
                     
