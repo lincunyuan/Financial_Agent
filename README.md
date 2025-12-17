@@ -410,3 +410,7 @@ MIT License
 ## 贡献
 
 欢迎提交Issue和Pull Request！
+
+
+ipconfig /flushdns
+git push origin master:main

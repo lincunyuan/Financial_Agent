@@ -33,6 +33,8 @@ logs/
 
 # 配置文件（包含敏感信息）
 config/api_keys.yaml
+config/database.yaml
+config/model_config.yaml
 
 # 应用缓存
 cache/
