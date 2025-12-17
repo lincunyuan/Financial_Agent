@@ -340,13 +340,13 @@ class FinancialAgentGraph:
             # 收集所有识别到的股票实体
             stock_identifiers = []
             
-            # 遍历实体列表查找所有股票相关信息
+            # 遍历实体列表查找所有股票/ETF相关信息
             for entity in entities:
-                if entity.get("type") in ["stock_name", "stock"]:
+                if entity.get("type") in ["stock_name", "stock", "etf"]:
                     stock_name = entity.get("value") or entity.get("name")
                     if stock_name:
                         stock_identifiers.append(stock_name)
-                elif entity.get("type") in ["stock_code", "stock"]:
+                elif entity.get("type") in ["stock_code", "etf_code"]:
                     stock_code = entity.get("value")
                     if stock_code:
                         stock_identifiers.append(stock_code)
@@ -412,10 +412,10 @@ class FinancialAgentGraph:
             Dict: 工具调用结果
         """
         try:
-            # 从实体中提取股票名称/代码
+            # 从实体中提取股票/ETF名称/代码
             stock_identifiers = []
             for entity in entities:
-                if entity.get("type") in ["stock_name", "stock_code"]:
+                if entity.get("type") in ["stock_name", "stock_code", "etf", "etf_code"]:
                     stock_identifiers.append(entity.get("value"))
             
             # 如果没有提取到股票信息，使用用户输入作为回退
@@ -608,13 +608,13 @@ class FinancialAgentGraph:
             # 收集所有识别到的股票实体
             stock_identifiers = []
             
-            # 遍历实体列表查找所有股票相关信息
+            # 遍历实体列表查找所有股票/ETF相关信息
             for entity in entities:
-                if entity.get("type") in ["stock_name", "stock"]:
+                if entity.get("type") in ["stock_name", "stock", "etf"]:
                     stock_name = entity.get("value") or entity.get("name")
                     if stock_name:
                         stock_identifiers.append(stock_name)
-                elif entity.get("type") in ["stock_code", "stock"]:
+                elif entity.get("type") in ["stock_code", "etf_code"]:
                     stock_code = entity.get("value")
                     if stock_code:
                         stock_identifiers.append(stock_code)
