@@ -3,6 +3,10 @@
 python run_frontend.py
 ```
 
+python scripts/download_sse_financial_reports.py --stock-code 600519.SH --max-downloads 10
+
+
+.\Start-DBservices.ps1 
 
 以管理员身份打开新的 PowerShell
 # 切换到 MySQL 目录
