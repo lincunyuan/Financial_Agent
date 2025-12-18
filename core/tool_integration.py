@@ -9,6 +9,7 @@ import json
 import os
 import time
 from .prompt_engine import PromptEngine
+from .sina_finance_api import get_stock_realtime_data, generate_time_sharing_chart, get_multiple_stocks_data
 
 # 设置日志
 logging.basicConfig(level=logging.INFO)
@@ -182,7 +183,15 @@ class FinancialDataAPI:
     def get_stock_price(self, symbol: str, time: Optional[datetime] = None) -> Optional[Dict]:
         """获取股票实时价格（优先使用API查询，失败时使用本地缓存），并提供近期表现分析的建议"""
         try:
-            # 优先从AkShare API获取最新数据
+            # 优先从新浪财经API获取最新数据
+            sina_data = self._get_stock_price_sina(symbol)
+            if sina_data:
+                # 分析近期表现
+                performance = self.analyze_stock_performance(symbol)
+                sina_data["performance_analysis"] = performance
+                return sina_data
+            
+            # 新浪财经API失败，尝试从AkShare API获取最新数据
             ak_data = self._get_stock_price_akshare(symbol)
             if ak_data:
                 # 分析近期表现
@@ -210,6 +219,47 @@ class FinancialDataAPI:
             return None
         except Exception as e:
             logger.error(f"获取股票价格失败 {symbol}: {str(e)}")
+            return None
+    
+    def _get_stock_price_sina(self, symbol: str) -> Optional[Dict]:
+        """使用新浪财经API获取股票数据"""
+        try:
+            # 处理股票代码格式，将.SS转换为sh，.SZ转换为sz
+            processed_symbol = symbol
+            if processed_symbol.endswith('.SS'):
+                processed_symbol = 'sh' + processed_symbol[:-3]
+            elif processed_symbol.endswith('.SZ'):
+                processed_symbol = 'sz' + processed_symbol[:-3]
+            
+            # 调用新浪财经API获取数据
+            sina_data = get_stock_realtime_data(processed_symbol)
+            if sina_data:
+                # 生成分时图
+                chart_output_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static', 'charts')
+                os.makedirs(chart_output_dir, exist_ok=True)
+                chart_path = os.path.join(chart_output_dir, f"time_sharing_{symbol.replace('.', '_')}.png")
+                generate_time_sharing_chart(sina_data, chart_path)
+                
+                # 转换数据格式，使其与其他数据源保持一致
+                result = {
+                    'symbol': symbol,
+                    'price': sina_data['current_price'],
+                    'change': sina_data['change_percent'],
+                    'change_amount': sina_data['change'],
+                    'volume': sina_data['volume'],
+                    'amount': sina_data['amount'],
+                    'high': sina_data['high_price'],
+                    'low': sina_data['low_price'],
+                    'open': sina_data['open_price'],
+                    'prev_close': sina_data['prev_close'],
+                    'timestamp': sina_data['timestamp'],
+                    'source': sina_data['source'],
+                    'time_sharing_chart_path': chart_path
+                }
+                return result
+            return None
+        except Exception as e:
+            logger.error(f"使用新浪财经API获取股票价格失败 {symbol}: {str(e)}")
             return None
     
     def _get_stock_price_from_cache(self, symbol: str) -> Optional[Dict]:
@@ -593,6 +643,37 @@ class FinancialDataAPI:
             logger.warning(f"Alpha Vantage获取股票数据失败: {e}")
             
         return None
+    
+    def generate_stock_time_sharing_chart(self, symbol: str, output_path: str) -> bool:
+        """
+        生成单只股票的分时股价图
+        
+        Args:
+            symbol: 股票代码，格式如"sh600519"（上证）或"sz000001"（深证）
+            output_path: 图表保存路径
+            
+        Returns:
+            bool: 图表生成成功返回True，失败返回False
+        """
+        try:
+            # 处理股票代码格式，将.SS转换为sh，.SZ转换为sz
+            processed_symbol = symbol
+            if processed_symbol.endswith('.SS'):
+                processed_symbol = 'sh' + processed_symbol[:-3]
+            elif processed_symbol.endswith('.SZ'):
+                processed_symbol = 'sz' + processed_symbol[:-3]
+            
+            # 获取股票实时数据
+            stock_data = get_stock_realtime_data(processed_symbol)
+            if not stock_data:
+                logger.error(f"获取股票{symbol}数据失败，无法生成分时图")
+                return False
+            
+            # 生成分时图
+            return generate_time_sharing_chart(stock_data, output_path)
+        except Exception as e:
+            logger.error(f"生成分时图失败 {symbol}: {str(e)}")
+            return False
 
     def get_market_index(self, index_name: str, time: Optional[datetime] = None) -> Optional[Dict]:
         """获取市场指数数据（优先使用AkShare）"""

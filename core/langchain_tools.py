@@ -342,11 +342,11 @@ def get_stock_historical_data(stock_name_or_code: str, start_date: Optional[str]
 
 @tool(return_direct=False)
 def generate_stock_charts(stock_name_or_code: str, chart_types: Optional[List[str]] = None) -> Dict[str, Any]:
-    """生成股票图表（K线图、折线图、成交量图）
+    """生成股票图表（K线图、折线图、成交量图、分时图）
     
     Args:
         stock_name_or_code: 股票名称或代码（如："贵州茅台"或"600519.SS"或"600519"）
-        chart_types: 要生成的图表类型列表，可选值：["k_line", "line", "volume"]，默认生成所有图表
+        chart_types: 要生成的图表类型列表，可选值：["k_line", "line", "volume", "time_sharing"]，默认生成所有图表
         
     Returns:
         Dict: 包含生成的图表路径信息的字典
@@ -405,7 +405,7 @@ def generate_stock_charts(stock_name_or_code: str, chart_types: Optional[List[st
         
         # 如果没有指定图表类型，生成所有图表
         if not chart_types:
-            chart_types = ["k_line", "line", "volume"]
+            chart_types = ["k_line", "line", "volume", "time_sharing"]
         
         # 生成并保存图表
         saved_charts = {}
@@ -427,6 +427,37 @@ def generate_stock_charts(stock_name_or_code: str, chart_types: Optional[List[st
             volume_fig = chart_generator.generate_volume_chart(stock_code, df)
             if volume_fig:
                 saved_charts["volume"] = chart_generator.save_chart(volume_fig, f"{stock_code}_volume", "html")
+        
+        # 生成分时图
+        if "time_sharing" in chart_types:
+            logger.info(f"开始生成分时图，图表类型: {chart_types}")
+            from core.sina_finance_api import get_stock_realtime_data
+            
+            # 处理股票代码格式，将.SS转换为sh，.SZ转换为sz
+            processed_symbol = stock_code
+            if processed_symbol.endswith('.SS'):
+                processed_symbol = 'sh' + processed_symbol[:-3]
+            elif processed_symbol.endswith('.SZ'):
+                processed_symbol = 'sz' + processed_symbol[:-3]
+            
+            logger.info(f"处理后的股票代码: {processed_symbol}")
+            
+            # 调用新浪财经API获取实时数据
+            sina_data = get_stock_realtime_data(processed_symbol)
+            if sina_data:
+                logger.info(f"成功获取新浪财经实时数据: {sina_data}")
+                # 使用ChartGenerator生成分时图
+                time_sharing_fig = chart_generator.generate_time_sharing_chart(stock_code, sina_data)
+                if time_sharing_fig:
+                    time_sharing_path = chart_generator.save_chart(time_sharing_fig, f"time_sharing_{stock_code.replace('.', '_')}", "html")
+                    saved_charts["time_sharing"] = time_sharing_path
+                    logger.info(f"成功生成分时图并保存到: {time_sharing_path}")
+                else:
+                    logger.error(f"生成分时图失败")
+            else:
+                logger.error(f"无法获取新浪财经实时数据")
+                
+        logger.info(f"最终保存的图表路径: {saved_charts}")
         
         if not saved_charts:
             return {"error": "无法生成图表", "tool_used": "generate_stock_charts"}

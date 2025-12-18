@@ -118,18 +118,63 @@ if prompt := st.chat_input("请输入您的金融问题..."):
             response_placeholder.markdown(response)
             
             # 显示图表（如果有）
-            if "kline_chart" in result and result["kline_chart"]:
+            # 检查是否有分时图和K线图数据，准备并排显示
+            has_time_chart = "time_sharing_chart_path" in result and result["time_sharing_chart_path"]
+            has_kline_chart = ("kline_chart" in result and result["kline_chart"]) or ("kline_chart_path" in result and result["kline_chart_path"])
+            
+
+            
+            # 如果同时有分时图和K线图，使用并排布局
+            if has_time_chart and has_kline_chart:
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("### 分时图")
+                    try:
+                        # 读取HTML文件并显示动态分时图
+                        with open(result["time_sharing_chart_path"], 'r', encoding='utf-8') as f:
+                            html_content = f.read()
+                            st.components.v1.html(html_content, height=600, scrolling=True)
+                    except Exception as e:
+                        st.error(f"显示分时图失败: {e}")
+                
+                with col2:
+                    st.markdown("### K线图")
+                    if "kline_chart" in result and result["kline_chart"]:
+                        st.plotly_chart(result["kline_chart"], use_container_width=True)
+                    elif "kline_chart_path" in result and result["kline_chart_path"]:
+                        # 读取HTML文件并显示
+                        try:
+                            with open(result["kline_chart_path"], 'r', encoding='utf-8') as f:
+                                html_content = f.read()
+                                st.components.v1.html(html_content, height=600, scrolling=True)
+                        except Exception as e:
+                            st.error(f"显示K线图失败: {e}")
+            # 只有K线图，单独显示
+            elif has_kline_chart:
                 st.markdown("### K线图")
-                st.plotly_chart(result["kline_chart"], use_container_width=True)
-            elif "kline_chart_path" in result and result["kline_chart_path"]:
-                st.markdown("### K线图")
-                # 读取HTML文件并显示
+                if "kline_chart" in result and result["kline_chart"]:
+                    st.plotly_chart(result["kline_chart"], use_container_width=True)
+                elif "kline_chart_path" in result and result["kline_chart_path"]:
+                    # 读取HTML文件并显示
+                    try:
+                        with open(result["kline_chart_path"], 'r', encoding='utf-8') as f:
+                            html_content = f.read()
+                            st.components.v1.html(html_content, height=600, scrolling=True)
+                    except Exception as e:
+                        st.error(f"显示K线图失败: {e}")
+            # 只有分时图，单独显示
+            elif has_time_chart:
+                st.markdown("### 分时图")
                 try:
-                    with open(result["kline_chart_path"], 'r', encoding='utf-8') as f:
+                    # 读取HTML文件并显示动态分时图
+                    with open(result["time_sharing_chart_path"], 'r', encoding='utf-8') as f:
                         html_content = f.read()
                         st.components.v1.html(html_content, height=600, scrolling=True)
                 except Exception as e:
-                    st.error(f"显示K线图失败: {e}")
+                    st.error(f"显示分时图失败: {e}")
+            
+            # 显示价格走势图（如果有）
             if "line_chart" in result and result["line_chart"]:
                 st.markdown("### 价格走势图")
                 st.plotly_chart(result["line_chart"], use_container_width=True)
@@ -142,6 +187,8 @@ if prompt := st.chat_input("请输入您的金融问题..."):
                         st.components.v1.html(html_content, height=600, scrolling=True)
                 except Exception as e:
                     st.error(f"显示价格走势图失败: {e}")
+            
+            # 显示成交量图（如果有）
             if "volume_chart" in result and result["volume_chart"]:
                 st.markdown("### 成交量图")
                 st.plotly_chart(result["volume_chart"], use_container_width=True)
@@ -158,8 +205,10 @@ if prompt := st.chat_input("请输入您的金融问题..."):
             # 添加助手响应到会话历史
             # 由于图表是交互式对象，只保存图表类型信息到会话历史
             message_content = response
+            if "time_sharing_chart_path" in result and result["time_sharing_chart_path"]:
+                message_content += "\n\n[已生成分时图]\n"
             if "kline_chart" in result and result["kline_chart"]:
-                message_content += "\n\n[已生成K线图]\n"
+                message_content += "[已生成K线图]\n"
             if "line_chart" in result and result["line_chart"]:
                 message_content += "[已生成价格走势图]\n"
             if "volume_chart" in result and result["volume_chart"]:

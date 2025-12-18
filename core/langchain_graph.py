@@ -649,15 +649,25 @@ class FinancialAgentGraph:
             if "成交量" in user_input or "量能" in user_input:
                 chart_types.append("volume")
             
+            # 无论用户是否指定，都自动包含分时图
+            chart_types.append("time_sharing")
+            
+            # 去重
+            chart_types = list(set(chart_types))
+            
             # 如果没有明确指定，生成所有图表
-            if not chart_types:
-                chart_types = ["k_line", "line", "volume"]
+            if len(chart_types) == 1:  # 只有分时图
+                chart_types = ["k_line", "line", "volume", "time_sharing"]
+            
+            logger.info(f"最终确定的图表类型: {chart_types}")
             
             # 如果只有一个股票，直接返回结果
             if len(stock_identifiers) == 1:
                 stock_identifier = stock_identifiers[0]
                 logger.info(f"调用生成股票图表工具, 股票: {stock_identifier}, 图表类型: {chart_types}")
-                return chart_tool.invoke({"stock_name_or_code": stock_identifier, "chart_types": chart_types})
+                result = chart_tool.invoke({"stock_name_or_code": stock_identifier, "chart_types": chart_types})
+                logger.info(f"图表生成工具返回结果: {result}")
+                return result
             
             # 如果有多个股票，返回所有股票的图表信息
             stock_charts = {}
@@ -805,7 +815,11 @@ class FinancialAgentGraph:
             return {
                 "response": response,
                 "thinking_process": thinking_process,
-                "user_id": state.get('user_id', 'default_user')
+                "user_id": state.get('user_id', 'default_user'),
+                "tool_result": state.get("tool_result"),
+                "intent": state.get("intent"),
+                "entities": state.get("entities"),
+                "context": context
             }
             
         except Exception as e:
@@ -881,9 +895,15 @@ class FinancialAgentGraph:
             }
             
             # 添加图表信息到响应中
-            if result.get("intent") == "stock_historical_data" and result.get("tool_result"):
+            if result.get("tool_result"):
                 tool_result = result.get("tool_result", {})
+                logger.info(f"处理工具结果: {tool_result}")
                 
+                # 处理分时图（来自get_stock_price）
+                if "time_sharing_chart_path" in tool_result:
+                    mcp_response["time_sharing_chart_path"] = tool_result["time_sharing_chart_path"]
+                    logger.info(f"添加分时图路径（来自get_stock_price）: {mcp_response['time_sharing_chart_path']}")
+                    
                 # 处理直接包含图表对象的情况（来自get_stock_historical_data）
                 if "kline_chart" in tool_result:
                     mcp_response["kline_chart"] = tool_result["kline_chart"]
@@ -895,14 +915,41 @@ class FinancialAgentGraph:
                 # 处理包含图表路径的情况（来自generate_stock_charts）
                 if "charts" in tool_result:
                     charts = tool_result["charts"]
+                    logger.info(f"处理图表路径（来自generate_stock_charts）: {charts}")
                     if "k_line" in charts:
-                        # 这里需要加载HTML文件并转换为可显示的图表对象
-                        # 目前先添加图表路径信息
                         mcp_response["kline_chart_path"] = charts["k_line"]
+                        logger.info(f"添加K线图路径: {mcp_response['kline_chart_path']}")
                     if "line" in charts:
                         mcp_response["line_chart_path"] = charts["line"]
                     if "volume" in charts:
                         mcp_response["volume_chart_path"] = charts["volume"]
+                    # 处理分时图
+                    if "time_sharing" in charts:
+                        mcp_response["time_sharing_chart_path"] = charts["time_sharing"]
+                        logger.info(f"添加分时图路径（来自generate_stock_charts）: {mcp_response['time_sharing_chart_path']}")
+                    else:
+                        logger.warning("图表中不包含分时图路径")
+                
+                # 处理多股票情况（来自generate_stock_charts）
+                if "multiple_stocks" in tool_result and tool_result["multiple_stocks"]:
+                    stock_charts = tool_result.get("stock_charts", {})
+                    logger.info(f"处理多股票情况: {stock_charts}")
+                    # 如果只有一只股票，取第一只的图表信息
+                    if len(stock_charts) == 1:
+                        first_stock_key = next(iter(stock_charts))
+                        first_stock_charts = stock_charts[first_stock_key].get("charts", {})
+                        if "k_line" in first_stock_charts:
+                            mcp_response["kline_chart_path"] = first_stock_charts["k_line"]
+                        if "line" in first_stock_charts:
+                            mcp_response["line_chart_path"] = first_stock_charts["line"]
+                        if "volume" in first_stock_charts:
+                            mcp_response["volume_chart_path"] = first_stock_charts["volume"]
+                        # 处理分时图
+                        if "time_sharing" in first_stock_charts:
+                            mcp_response["time_sharing_chart_path"] = first_stock_charts["time_sharing"]
+                            logger.info(f"添加分时图路径（多股票情况）: {mcp_response['time_sharing_chart_path']}")
+                        else:
+                            logger.warning("多股票图表中不包含分时图路径")
             
             # 如果有会话存储，保存对话历史
             if self.session_storage and hasattr(self.session_storage, 'store_conversation'):
