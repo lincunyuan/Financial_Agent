@@ -12,6 +12,7 @@ import pandas as pd
 import akshare as ak
 from datetime import datetime, timedelta
 from typing import List, Dict, Tuple
+from tqdm.asyncio import tqdm as async_tqdm
 
 # 设置日志配置
 logging.basicConfig(
@@ -282,22 +283,20 @@ class StockDataDownloader:
         logger.info(f"开始下载 {self.total_stocks} 只股票的日k数据，时间范围: {start_date} 到 {end_date}")
         logger.info(f"最大并发数: {max_concurrency}")
         
-        # 创建任务队列
-        tasks = []
-        
         # 使用Semaphore控制并发
         semaphore = asyncio.Semaphore(max_concurrency)
         
         async def bounded_download(stock):
             async with semaphore:
-                await self.download_single_stock_data(stock, start_date, end_date, max_retries=3, retry_delay=3)
+                result = await self.download_single_stock_data(stock, start_date, end_date, max_retries=3, retry_delay=3)
+                return result
         
         # 创建所有任务
-        for stock in stock_list:
-            tasks.append(bounded_download(stock))
+        tasks = [bounded_download(stock) for stock in stock_list]
         
-        # 等待所有任务完成
-        await asyncio.gather(*tasks)
+        # 使用async_tqdm显示进度条
+        logger.info("开始执行下载任务...")
+        results = await async_tqdm.gather(*tasks, desc="下载进度", unit="只", total=len(tasks))
         
         # 输出统计信息
         logger.info("\n" + "="*60)
@@ -307,7 +306,7 @@ class StockDataDownloader:
         logger.info(f"下载失败: {self.fail_count}")
         logger.info("="*60)
     
-    def run(self, start_date: str, end_date: str, max_concurrency: int = 10, limit: int = None, test_stocks: bool = False, test_stock: str = None) -> None:
+    def run(self, start_date: str, end_date: str, max_concurrency: int = 10, limit: int = None, test_stocks: bool = False, test_stock: str = None, fixed_stocks: List[str] = None) -> None:
         """
         运行下载任务
         
@@ -318,6 +317,7 @@ class StockDataDownloader:
             limit: 限制下载的股票数量，None表示下载所有股票
             test_stocks: 是否使用测试股票列表（知名股票）
             test_stock: 测试模式，指定单个股票代码（格式：600519.SS）
+            fixed_stocks: 固定股票列表，格式：["601288.SS", "600519.SS"]
         """
         # 测试模式：指定单个股票
         if test_stock:
@@ -351,6 +351,39 @@ class StockDataDownloader:
             except Exception as e:
                 logger.warning(f"获取测试股票名称失败: {e}")
                 stock_list = [(test_stock, "未知股票")]
+        # 固定股票模式：下载指定的股票列表
+        elif fixed_stocks:
+            logger.info(f"固定股票模式：下载指定的 {len(fixed_stocks)} 只股票")
+            stock_list = []
+            for stock_code in fixed_stocks:
+                try:
+                    # 尝试获取真实股票名称
+                    stock_name = "未知股票"
+                    if stock_code.endswith('.SS') or stock_code.endswith('.SZ'):
+                        numeric_code = stock_code[:-3]
+                    else:
+                        numeric_code = stock_code
+                    
+                    # 尝试使用akshare获取股票名称
+                    try:
+                        stock_list_df = ak.stock_zh_a_spot()
+                        stock_data = stock_list_df[stock_list_df['代码'] == numeric_code]
+                        if not stock_data.empty:
+                            stock_name = stock_data.iloc[0]['名称']
+                    except Exception:
+                        # 如果失败，使用备选方法
+                        try:
+                            stock_list_df = ak.stock_info_a_code_name()
+                            stock_data = stock_list_df[stock_list_df['code'] == numeric_code]
+                            if not stock_data.empty:
+                                stock_name = stock_data.iloc[0]['name']
+                        except Exception:
+                            pass
+                    
+                    stock_list.append((stock_code, stock_name))
+                except Exception as e:
+                    logger.warning(f"获取股票 {stock_code} 名称失败: {e}")
+                    stock_list.append((stock_code, "未知股票"))
         else:
             # 获取所有股票列表
             stock_list = self.get_all_stock_list()
@@ -395,15 +428,22 @@ def main():
                         help='只下载一些知名测试股票（贵州茅台、工商银行等）')
     parser.add_argument('--test-stock', type=str, default=None,
                         help='测试模式：指定单个股票代码（格式：600519.SS）')
-    
+    parser.add_argument('--fixed-stocks', type=str, default=None,
+                        help='固定股票列表，格式："601288.SS,600519.SS"')
+
     args = parser.parse_args()
     
     try:
         # 创建下载器实例
         downloader = StockDataDownloader(args.output_dir)
         
+        # 解析固定股票列表
+        fixed_stocks = None
+        if args.fixed_stocks:
+            fixed_stocks = [stock.strip() for stock in args.fixed_stocks.split(',')]
+        
         # 运行下载任务
-        downloader.run(args.start_date, args.end_date, args.max_concurrency, args.limit, args.test_stocks, args.test_stock)
+        downloader.run(args.start_date, args.end_date, args.max_concurrency, args.limit, args.test_stocks, args.test_stock, fixed_stocks)
         
         logger.info("所有任务完成！")
         return 0

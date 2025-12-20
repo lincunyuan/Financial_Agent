@@ -131,10 +131,16 @@ if prompt := st.chat_input("请输入您的金融问题..."):
                 with col1:
                     st.markdown("### 分时图")
                     try:
-                        # 读取HTML文件并显示动态分时图
-                        with open(result["time_sharing_chart_path"], 'r', encoding='utf-8') as f:
-                            html_content = f.read()
-                            st.components.v1.html(html_content, height=600, scrolling=True)
+                        # 检查文件扩展名，确定是PNG还是HTML
+                        chart_path = result["time_sharing_chart_path"]
+                        if chart_path.endswith('.png'):
+                            # 显示PNG图片
+                            st.image(chart_path, use_container_width=True)
+                        else:
+                            # 读取HTML文件并显示动态分时图
+                            with open(chart_path, 'r', encoding='utf-8') as f:
+                                html_content = f.read()
+                                st.components.v1.html(html_content, height=600, scrolling=True)
                     except Exception as e:
                         st.error(f"显示分时图失败: {e}")
                 
@@ -167,10 +173,16 @@ if prompt := st.chat_input("请输入您的金融问题..."):
             elif has_time_chart:
                 st.markdown("### 分时图")
                 try:
-                    # 读取HTML文件并显示动态分时图
-                    with open(result["time_sharing_chart_path"], 'r', encoding='utf-8') as f:
-                        html_content = f.read()
-                        st.components.v1.html(html_content, height=600, scrolling=True)
+                    # 检查文件扩展名，确定是PNG还是HTML
+                    chart_path = result["time_sharing_chart_path"]
+                    if chart_path.endswith('.png'):
+                        # 显示PNG图片
+                        st.image(chart_path, use_container_width=True)
+                    else:
+                        # 读取HTML文件并显示动态分时图
+                        with open(chart_path, 'r', encoding='utf-8') as f:
+                            html_content = f.read()
+                            st.components.v1.html(html_content, height=600, scrolling=True)
                 except Exception as e:
                     st.error(f"显示分时图失败: {e}")
             
