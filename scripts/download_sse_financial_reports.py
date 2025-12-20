@@ -124,14 +124,8 @@ class SSEFinancialReportDownloader:
         logger.info(f"选择报告类型: {report_type}")
         
         try:
-            # 先向下滚动页面，确保报告类型选择区域可见
-            logger.info("向下滚动页面以显示报告类型选择区域")
-            # 使用JavaScript执行滚动
-            self.driver.execute_script("window.scrollBy(0, 500);")
-            time.sleep(2)  # 等待滚动完成
-            
-            # 查找报告类型选择区域
-            WebDriverWait(self.driver, 10).until(
+            # 查找报告类型选择区域（不滚动页面，依赖search_stock后的统一滚动）
+            WebDriverWait(self.driver, 15).until(
                 EC.presence_of_element_located((By.CLASS_NAME, "announceTypeList"))
             )
             
@@ -139,31 +133,53 @@ class SSEFinancialReportDownloader:
             regular_report_div = self.driver.find_element(By.XPATH, "//div[contains(@class, 'announceDiv') and contains(.//b[@class='btype-name'], '定期报告')]")
             logger.info("找到定期报告大类")
             
-            # 展开定期报告的子列表（如果需要）
-            if "announce-child" not in regular_report_div.get_attribute("class"):
-                regular_report_div.click()
-                logger.info("展开定期报告子列表")
-                time.sleep(2)
+            # 确保定期报告子列表已展开
+            # 无论是否包含announce-child类，都尝试点击展开
+            regular_report_div.click()
+            logger.info("尝试展开定期报告子列表")
+            time.sleep(3)  # 增加等待时间，确保子列表完全展开
             
             # 查找具体的报告类型选项
             report_type_items = regular_report_div.find_elements(By.XPATH, ".//ul[@class='small-type-list']/li")
             logger.info(f"找到 {len(report_type_items)} 个定期报告子选项")
             
+            # 打印所有找到的报告类型选项，便于调试
+            all_report_types = []
+            for item in report_type_items:
+                item_text = item.text.strip()
+                all_report_types.append(item_text)
+                logger.debug(f"定期报告子选项: {item_text}")
+            logger.info(f"所有报告类型选项: {', '.join(all_report_types)}")
+            
             selected = False
             for item in report_type_items:
                 item_text = item.text.strip()
-                logger.debug(f"定期报告子选项: {item_text}")
                 
+                # 只处理指定的报告类型，忽略其他所有类型
                 if report_type == item_text:
+                    logger.info(f"正在选择目标报告类型: {report_type}")
                     # 点击选择该报告类型（点击圆框图标）
-                    icon = item.find_element(By.CLASS_NAME, "iconcircle")
-                    icon.click()
-                    logger.info(f"已选择报告类型: {report_type}")
-                    selected = True
-                    break
+                    try:
+                        icon = item.find_element(By.CLASS_NAME, "iconcircle")
+                        icon.click()
+                        logger.info(f"已成功选择报告类型: {report_type}")
+                        selected = True
+                        break
+                    except Exception as inner_e:
+                        logger.error(f"点击报告类型图标失败: {inner_e}")
+                        # 尝试直接点击整个选项
+                        logger.info(f"尝试直接点击报告类型选项: {report_type}")
+                        item.click()
+                        logger.info(f"已直接点击选择报告类型: {report_type}")
+                        selected = True
+                        break
+                else:
+                    # 明确忽略所有非目标报告类型
+                    logger.info(f"忽略非目标报告类型: {item_text}")
             
             if not selected:
-                logger.warning(f"未找到报告类型: {report_type}")
+                logger.error(f"未找到报告类型: {report_type}")
+                raise ValueError(f"未找到报告类型: {report_type}")
                 
         except Exception as e:
             logger.error(f"选择报告类型失败: {e}")
@@ -171,6 +187,7 @@ class SSEFinancialReportDownloader:
             with open('report_type_selection_error.html', 'w', encoding='utf-8') as f:
                 f.write(self.driver.page_source)
             logger.info("页面内容已保存到 report_type_selection_error.html")
+            raise
     
     def search_stock(self, stock_code: str):
         """
@@ -218,6 +235,11 @@ class SSEFinancialReportDownloader:
             with open('search_results.html', 'w', encoding='utf-8') as f:
                 f.write(self.driver.page_source)
             logger.info("搜索结果已保存到 search_results.html")
+            
+            # 选择代码后向下滑动鼠标一次
+            logger.info("在选择代码后向下滑动鼠标一次")
+            self.driver.execute_script("window.scrollBy(0, 500);")
+            time.sleep(2)  # 等待页面稳定
             
         except Exception as e:
             logger.error(f"搜索失败: {e}")
@@ -278,62 +300,77 @@ class SSEFinancialReportDownloader:
                                 logger.debug(f"跳过非目标股票: {actual_stock_code} (目标: {expected_stock_code})")
                                 continue
                         
-                        # 从第三个单元格提取PDF链接
-                        link_cell = cells[2]
-                        # 查找所有链接，不一定是直接以.pdf结尾的
-                        links = link_cell.find_elements(By.CSS_SELECTOR, 'a.table_titlewrap')
+                        # 检查报告标题是否包含年报关键词，确保只下载年报
+                        title_cell = cells[2]
+                        title_text = title_cell.text.strip()
+                        logger.info(f"报告标题: {title_text}")
+                        # 接受包含"年报"或"年度报告"的标题
+                        if '年报' not in title_text and '年度报告' not in title_text:
+                            logger.info(f"跳过非年报报告: {title_text}")
+                            continue
                         
-                        for link in links:
-                            if downloaded_count >= max_downloads:
-                                logger.info(f"已完成 {max_downloads} 个文件的下载")
-                                break
+                        # 从第三个单元格查找下载按钮
+                        link_cell = cells[2]
+                        
+                        # 查找下载按钮
+                        download_buttons = link_cell.find_elements(By.CSS_SELECTOR, 'a[href$=".pdf"], button.download-btn, .download-icon a')
+                        
+                        if download_buttons:
+                            # 直接点击下载按钮
+                            download_button = download_buttons[0]
+                            download_href = download_button.get_attribute('href') or '无链接属性'
                             
-                            href = link.get_attribute('href')
-                            text = link.text.strip()
+                            logger.info(f"找到目标股票 {actual_stock_code} 的下载按钮: {download_href}")
                             
-                            logger.info(f"找到目标股票 {actual_stock_code} 的链接: {text} - {href}")
-                            
-                            # 点击链接，有些链接可能会跳转到另一个页面再提供PDF下载
-                            link.click()
-                            logger.info(f"已点击链接: {text}")
-                            
-                            # 等待新页面加载
-                            time.sleep(3)
-                            
-                            # 切换到新窗口
-                            windows = self.driver.window_handles
-                            if len(windows) > 1:
-                                self.driver.switch_to.window(windows[1])
-                                
-                                try:
-                                    # 在新页面查找PDF下载链接
-                                    WebDriverWait(self.driver, 10).until(
-                                        EC.presence_of_element_located((By.CSS_SELECTOR, 'a[href$=".pdf"]'))
-                                    )
-                                    
-                                    # 查找所有PDF链接
-                                    pdf_links = self.driver.find_elements(By.CSS_SELECTOR, 'a[href$=".pdf"]')
-                                    if pdf_links:
-                                        # 点击第一个PDF链接
-                                        pdf_link = pdf_links[0]
-                                        pdf_href = pdf_link.get_attribute('href')
-                                        pdf_text = pdf_link.text.strip()
-                                        
-                                        logger.info(f"在新页面找到PDF下载链接: {pdf_text} - {pdf_href}")
-                                        pdf_link.click()
-                                        logger.info(f"已点击下载: {pdf_text}")
-                                        downloaded_count += 1
-                                finally:
-                                    # 关闭新窗口并切换回主窗口
-                                    self.driver.close()
-                                    self.driver.switch_to.window(windows[0])
-                            else:
-                                # 如果没有新窗口打开，可能是直接下载
-                                logger.info("可能是直接下载，无需新窗口")
-                                downloaded_count += 1
+                            # 点击下载按钮
+                            download_button.click()
+                            logger.info("已点击下载按钮")
+                            downloaded_count += 1
                             
                             # 等待下载开始
                             time.sleep(3)
+                        else:
+                            # 如果没有找到下载按钮，尝试找到公告标题链接（作为备选方案）
+                            title_links = link_cell.find_elements(By.CSS_SELECTOR, 'a.table_titlewrap')
+                            if title_links:
+                                title_link = title_links[0]
+                                title_text = title_link.text.strip()
+                                logger.warning(f"未找到直接下载按钮，尝试点击标题链接: {title_text}")
+                                
+                                # 点击链接，作为备选方案
+                                title_link.click()
+                                time.sleep(3)
+                                
+                                # 切换到新窗口
+                                windows = self.driver.window_handles
+                                if len(windows) > 1:
+                                    self.driver.switch_to.window(windows[1])
+                                    
+                                    try:
+                                        # 在新页面查找PDF下载链接
+                                        WebDriverWait(self.driver, 10).until(
+                                            EC.presence_of_element_located((By.CSS_SELECTOR, 'a[href$=".pdf"]'))
+                                        )
+                                        
+                                        # 查找所有PDF链接
+                                        pdf_links = self.driver.find_elements(By.CSS_SELECTOR, 'a[href$=".pdf"]')
+                                        if pdf_links:
+                                            # 点击第一个PDF链接
+                                            pdf_link = pdf_links[0]
+                                            pdf_href = pdf_link.get_attribute('href')
+                                            pdf_text = pdf_link.text.strip()
+                                            
+                                            logger.info(f"在新页面找到PDF下载链接: {pdf_text} - {pdf_href}")
+                                            pdf_link.click()
+                                            logger.info(f"已点击下载: {pdf_text}")
+                                            downloaded_count += 1
+                                    finally:
+                                        # 关闭新窗口并切换回主窗口
+                                        self.driver.close()
+                                        self.driver.switch_to.window(windows[0])
+                                    
+                                    # 等待下载开始
+                                    time.sleep(3)
                     
                     except Exception as e:
                         logger.error(f"处理行失败: {e}")
@@ -353,6 +390,42 @@ class SSEFinancialReportDownloader:
             with open('download_error.html', 'w', encoding='utf-8') as f:
                 f.write(self.driver.page_source)
             logger.info("页面内容已保存到 download_error.html")
+            raise
+    
+    def select_announcement_content(self):
+        """
+        选择只看公告正文
+        """
+        logger.info("选择只看公告正文")
+        
+        try:
+            # 查找公告正文选择选项（不滚动页面，依赖search_stock后的统一滚动）
+            content_options = self.driver.find_elements(By.XPATH, "//div[contains(@class, 'announceTypeList')]/div/div")
+            logger.info(f"找到 {len(content_options)} 个公告内容选项")
+            
+            selected = False
+            for option in content_options:
+                option_text = option.text.strip()
+                logger.debug(f"公告内容选项: {option_text}")
+                
+                if option_text == "只看公告正文":
+                    # 点击选择该选项（点击圆框图标）
+                    icon = option.find_element(By.CLASS_NAME, "iconcircle")
+                    icon.click()
+                    logger.info("已选择只看公告正文")
+                    selected = True
+                    break
+            
+            if not selected:
+                logger.error("未找到只看公告正文选项")
+                raise ValueError("未找到只看公告正文选项")
+                
+        except Exception as e:
+            logger.error(f"选择只看公告正文失败: {e}")
+            # 保存当前页面以分析问题
+            with open('announcement_content_selection_error.html', 'w', encoding='utf-8') as f:
+                f.write(self.driver.page_source)
+            logger.info("页面内容已保存到 announcement_content_selection_error.html")
             raise
     
     def run(self, stock_code: str, max_downloads: int = 10, report_type: str = None):
@@ -379,8 +452,19 @@ class SSEFinancialReportDownloader:
             # 先搜索股票
             self.search_stock(stock_code)
             
-            # 然后滑动鼠标并选择报告类型
+            # 选择只看公告正文
+            self.select_announcement_content()
+            
+            # 等待1秒后再选择报告类型
+            logger.info("等待1秒后选择年报...")
+            time.sleep(1)
+            
+            # 选择报告类型
             self.select_report_type(report_type)
+            
+            # 等待1秒，确保页面数据加载完成
+            logger.info("等待页面数据加载完成...")
+            time.sleep(1)
             
             # 下载PDF文件，过滤出目标股票的财报
             downloaded_count = self.download_pdf_reports(max_downloads, expected_stock_code=expected_stock_code)
@@ -406,7 +490,8 @@ def main():
     parser.add_argument('--headless', action='store_true',
                         help='使用无头模式')
     parser.add_argument('--report-type', type=str, choices=['年报', '一季报', '三季报', '半年报'],
-                        help='报告类型，可选值：年报、一季报、三季报、半年报')
+                        default='年报',
+                        help='报告类型，可选值：年报、一季报、三季报、半年报，默认选择年报')
     
     args = parser.parse_args()
     

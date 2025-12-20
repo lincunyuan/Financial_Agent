@@ -43,3 +43,12 @@ cache/
 .DS_Store
 Thumbs.db
 stock_data/
+
+# 下载的PDF文件
+data/pdfs/
+
+# 临时HTML文件
+*.html
+
+# 静态资源目录
+static/
