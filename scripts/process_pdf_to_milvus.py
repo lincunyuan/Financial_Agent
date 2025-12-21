@@ -126,50 +126,72 @@ class FinancialPDFProcessor:
             raise
     
     def create_collection(self):
-        """创建Milvus集合"""
+        """创建Milvus集合（使用与knowledge_base.py相同的API）"""
         try:
             # 获取模型输出维度
             embedding_dim = self.embedding_model_instance.get_dimension()
             
-            # 创建集合
-            self.milvus_client.create_collection(
-                collection_name=self.collection_name,
-                dimension=embedding_dim,
-                primary_field_name="id",
-                vector_field_name="vector",
-                metric_type="IP"  # 内积相似度
-            )
+            # 使用与knowledge_base.py相同的方式创建集合
+            from pymilvus import connections, Collection, CollectionSchema, FieldSchema, DataType
+            
+            # 确保Milvus连接已建立（使用旧版API）
+            if not connections.has_connection("default"):
+                connections.connect("default", host="localhost", port="19530")
+                logger.info("已建立Milvus默认连接")
+            
+            fields = [
+                FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=True),
+                FieldSchema(name="text_chunk", dtype=DataType.VARCHAR, max_length=4000),  # 增加max_length到4000
+                FieldSchema(name="page", dtype=DataType.INT64),
+                FieldSchema(name="source", dtype=DataType.VARCHAR, max_length=500),
+                FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=embedding_dim)
+            ]
+            
+            schema = CollectionSchema(fields, f"Financial report collection {self.collection_name}")
+            collection = Collection(self.collection_name, schema)
+            
             logger.info(f"成功创建集合 {self.collection_name}，向量维度: {embedding_dim}")
+            logger.info(f"集合包含字段: {[field.name for field in fields]}")
+            
+            # 创建索引，使用HNSW算法优化检索速度
+            index_params = {
+                "index_type": "HNSW",
+                "metric_type": "IP",
+                "params": {"M": 16, "efConstruction": 200}
+            }
+            collection.create_index("vector", index_params)
+            logger.info("成功创建HNSW索引")
             
         except Exception as e:
             logger.error(f"创建集合失败: {e}")
             raise
     
-    def extract_text_from_pdf(self, pdf_path: str) -> str:
+    def extract_text_from_pdf(self, pdf_path: str) -> List[Dict[str, Any]]:
         """
-        从PDF文件中提取文本
+        从PDF文件中提取文本，保留页面信息
         
         Args:
             pdf_path: PDF文件路径
             
         Returns:
-            提取的文本内容
+            页面文本列表，每个元素包含page_number和text字段
         """
         logger.info(f"开始解析PDF文件: {pdf_path}")
         
         try:
+            pages_text = []
             with pdfplumber.open(pdf_path) as pdf:
-                full_text = ""
                 page_count = len(pdf.pages)
                 logger.info(f"PDF文件共 {page_count} 页")
                 
                 for i, page in enumerate(pdf.pages, 1):
                     logger.debug(f"处理第 {i}/{page_count} 页")
+                    page_text = ""
                     
                     # 提取文本
                     text = page.extract_text()
                     if text:
-                        full_text += text + "\n"
+                        page_text += text + "\n"
                     
                     # 提取表格并转换为文本
                     tables = page.extract_tables()
@@ -180,132 +202,171 @@ class FinancialPDFProcessor:
                             for row in table:
                                 row_text = "\t".join([str(cell) if cell else "" for cell in row])
                                 table_text += row_text + "\n"
-                            full_text += table_text + "\n"
+                            page_text += table_text + "\n"
+                    
+                    if page_text.strip():
+                        pages_text.append({
+                            "page_number": i,
+                            "text": page_text.strip()
+                        })
             
             # 检查提取的文本是否为空
-            if not full_text or not full_text.strip():
+            if not pages_text:
                 logger.warning(f"PDF解析完成，但未提取到任何文本内容。可能是扫描版PDF或加密PDF。")
                 logger.warning("建议尝试使用OCR工具（如pytesseract）进行文本提取。")
-                return ""
             
-            logger.info(f"PDF解析完成，提取文本长度: {len(full_text)} 字符")
-            return full_text
+            total_text_length = sum(len(page["text"]) for page in pages_text)
+            logger.info(f"PDF解析完成，提取文本长度: {total_text_length} 字符，有效页面数: {len(pages_text)}")
+            return pages_text
         
         except Exception as e:
             logger.error(f"PDF解析失败: {e}")
             # 可以在这里添加OCR备选方案
             raise
     
-    def chunk_text(self, text: str, max_tokens: int = 1024) -> List[str]:
+    def chunk_text(self, pages_text: List[Dict[str, Any]], max_tokens: int = 1024) -> List[Dict[str, Any]]:
         """
-        文本分块
+        文本分块，保留页面信息
         
         Args:
-            text: 原始文本
+            pages_text: 页面文本列表，每个元素包含page_number和text字段
             max_tokens: 每块最大token数
             
         Returns:
-            文本块列表
+            文本块列表，每个元素包含page_number和text字段
         """
         logger.info(f"开始文本分块，目标每块最大 {max_tokens} tokens")
         
         # 检查输入文本是否为空
-        if not text or not text.strip():
-            logger.warning("输入文本为空，无法进行有效分块")
+        if not pages_text:
+            logger.warning("输入页面文本为空，无法进行有效分块")
             return []
         
         try:
-            # 使用正则表达式分割中文句子（替代nltk.sent_tokenize）
-            sentences = split_chinese_sentences(text)
-            logger.info(f"文本分割为 {len(sentences)} 个句子")
+            all_chunks = []
             
-            chunks = []
-            current_chunk = ""
-            current_tokens = 0
-            
-            for sentence in sentences:
-                # 估算token数（按平均每个单词1.3个token计算）
-                sentence_tokens = len(sentence.split()) * 1.3
+            # 按页面分块，确保文本块不跨越页面
+            for page in pages_text:
+                page_number = page["page_number"]
+                page_text = page["text"]
                 
-                if current_tokens + sentence_tokens > max_tokens and current_chunk:
-                    # 当前块已满，保存并开始新块
-                    chunks.append(current_chunk.strip())
-                    current_chunk = sentence + " "
-                    current_tokens = sentence_tokens
-                else:
-                    # 添加到当前块
-                    current_chunk += sentence + " "
-                    current_tokens += sentence_tokens
+                logger.debug(f"开始处理第 {page_number} 页的文本分块")
+                
+                # 使用正则表达式分割中文句子
+                sentences = split_chinese_sentences(page_text)
+                
+                chunks = []
+                current_chunk = ""
+                current_tokens = 0
+                
+                for sentence in sentences:
+                    # 估算token数（中文每个字符≈1token，英文每个单词≈1.3token，统一按字符数估算）
+                    sentence_tokens = len(sentence) * 1.0
+                    
+                    if current_tokens + sentence_tokens > max_tokens and current_chunk:
+                        # 当前块已满，保存并开始新块
+                        chunks.append({
+                            "page_number": page_number,
+                            "text_chunk": current_chunk.strip()
+                        })
+                        current_chunk = sentence + " "
+                        current_tokens = sentence_tokens
+                    else:
+                        # 添加到当前块
+                        current_chunk += sentence + " "
+                        current_tokens += sentence_tokens
+                
+                # 添加最后一个块
+                if current_chunk:
+                    chunks.append({
+                        "page_number": page_number,
+                        "text_chunk": current_chunk.strip()
+                    })
+                
+                all_chunks.extend(chunks)
             
-            # 添加最后一个块
-            if current_chunk:
-                chunks.append(current_chunk.strip())
+            logger.info(f"文本分块完成，共 {len(all_chunks)} 个块")
+            if all_chunks:
+                logger.debug(f"块大小统计: 最小 {min(len(chunk['text'].split()) for chunk in all_chunks)} 词, 最大 {max(len(chunk['text'].split()) for chunk in all_chunks)} 词")
             
-            logger.info(f"文本分块完成，共 {len(chunks)} 个块")
-            if chunks:
-                logger.debug(f"块大小统计: 最小 {min(len(chunk.split()) for chunk in chunks)} 词, 最大 {max(len(chunk.split()) for chunk in chunks)} 词")
-            
-            return chunks
+            return all_chunks
             
         except Exception as e:
             logger.warning(f"使用正则表达式分块失败: {e}，将使用备用分块方法")
             
-            # 使用备用分块方法：按段落和字符数分割
-            # 先按空行分割成段落
-            paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
+            all_chunks = []
             
-            chunks = []
-            current_chunk = ""
-            current_tokens = 0
-            
-            for paragraph in paragraphs:
-                # 估算段落的token数
-                paragraph_tokens = len(paragraph.split()) * 1.3
+            # 使用备用分块方法：按页面和段落分割
+            for page in pages_text:
+                page_number = page["page_number"]
+                page_text = page["text"]
                 
-                if current_tokens + paragraph_tokens > max_tokens and current_chunk:
-                    # 当前块已满，保存并开始新块
-                    chunks.append(current_chunk.strip())
-                    current_chunk = paragraph + "\n"
-                    current_tokens = paragraph_tokens
-                else:
-                    # 添加到当前块
-                    current_chunk += paragraph + "\n"
-                    current_tokens += paragraph_tokens
+                # 先按空行分割成段落
+                paragraphs = [p.strip() for p in page_text.split('\n\n') if p.strip()]
                 
-                # 如果单个段落过长，进一步分割
-                if len(current_chunk.split()) * 1.3 > max_tokens * 1.5:
-                    # 将长块按字符数分割
-                    words = current_chunk.split()
-                    half_length = len(words) // 2
+                chunks = []
+                current_chunk = ""
+                current_tokens = 0
+                
+                for paragraph in paragraphs:
+                    # 估算段落的token数（中文每个字符≈1token，统一按字符数估算）
+                    paragraph_tokens = len(paragraph) * 1.0
                     
-                    # 分割成两个块
-                    first_half = " ".join(words[:half_length])
-                    second_half = " ".join(words[half_length:])
+                    if current_tokens + paragraph_tokens > max_tokens and current_chunk:
+                        # 当前块已满，保存并开始新块
+                        chunks.append({
+                            "page_number": page_number,
+                            "text_chunk": current_chunk.strip()
+                        })
+                        current_chunk = paragraph + "\n"
+                        current_tokens = paragraph_tokens
+                    else:
+                        # 添加到当前块
+                        current_chunk += paragraph + "\n"
+                        current_tokens += paragraph_tokens
                     
-                    chunks.append(first_half.strip())
-                    current_chunk = second_half.strip() + "\n"
-                    current_tokens = len(second_half.split()) * 1.3
+                    # 如果单个段落过长，进一步分割
+                    if len(current_chunk) * 1.0 > max_tokens * 1.5:
+                        # 将长块按字符数分割
+                        words = current_chunk.split()
+                        half_length = len(words) // 2
+                        
+                        # 分割成两个块
+                        first_half = " ".join(words[:half_length])
+                        second_half = " ".join(words[half_length:])
+                        
+                        chunks.append({
+                            "page_number": page_number,
+                            "text_chunk": first_half.strip()
+                        })
+                        current_chunk = second_half.strip() + "\n"
+                        current_tokens = len(second_half.split()) * 1.3
+                
+                # 添加最后一个块
+                if current_chunk.strip():
+                    chunks.append({
+                        "page_number": page_number,
+                        "text_chunk": current_chunk.strip()
+                    })
+                
+                all_chunks.extend(chunks)
             
-            # 添加最后一个块
-            if current_chunk.strip():
-                chunks.append(current_chunk.strip())
+            logger.info(f"备用分块方法完成，共 {len(all_chunks)} 个块")
             
-            logger.info(f"备用分块方法完成，共 {len(chunks)} 个块")
-            
-            return chunks
+            return all_chunks
     
-    def generate_embeddings(self, text_chunks: List[str]) -> List[List[float]]:
+    def generate_embeddings(self, text_chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        生成文本块的向量表示
+        生成文本块的向量表示，保留页面信息
         
         Args:
-            text_chunks: 文本块列表
+            text_chunks: 文本块列表，每个元素包含page_number和text字段
             
         Returns:
-            向量列表
+            向量列表，每个元素包含page_number、text和vector字段
         """
         # 检查输入文本块列表是否为空
-        filtered_chunks = [chunk for chunk in text_chunks if chunk and chunk.strip()]
+        filtered_chunks = [chunk for chunk in text_chunks if chunk['text_chunk'] and chunk['text_chunk'].strip()]
         if not filtered_chunks:
             logger.warning("没有可用的非空文本块来生成向量")
             return []
@@ -313,45 +374,65 @@ class FinancialPDFProcessor:
         logger.info(f"开始生成向量，共 {len(filtered_chunks)} 个非空文本块")
         
         try:
+            # 提取文本内容用于生成向量
+            texts = [chunk['text_chunk'] for chunk in filtered_chunks]
+            
             # 生成向量
-            embeddings = self.embedding_model_instance.encode(filtered_chunks)
+            embeddings = self.embedding_model_instance.encode(texts)
             
             # 确保返回的是Python列表格式
             if hasattr(embeddings, 'tolist'):
                 embeddings = embeddings.tolist()
             
+            # 合并向量和页面信息
+            result = []
+            for chunk, vector in zip(filtered_chunks, embeddings):
+                result.append({
+                        "page_number": chunk['page_number'],
+                        "text_chunk": chunk['text_chunk'],
+                        "vector": vector
+                    })
+            
             logger.info(f"向量生成完成，向量维度: {len(embeddings[0])}")
-            return embeddings
+            return result
             
         except Exception as e:
             logger.error(f"向量生成失败: {e}")
             raise
     
-    def update_milvus(self, embeddings: List[List[float]], text_chunks: List[str], 
+    def update_milvus(self, vector_chunks: List[Dict[str, Any]], 
                      pdf_metadata: Dict[str, Any] = None) -> int:
         """
-        更新Milvus向量数据库
+        更新Milvus向量数据库，保留页面信息
         
         Args:
-            embeddings: 向量列表
-            text_chunks: 文本块列表
+            vector_chunks: 向量块列表，每个元素包含page_number、text和vector字段
             pdf_metadata: PDF元数据
             
         Returns:
             更新的记录数
         """
-        logger.info(f"开始更新Milvus数据库，共 {len(embeddings)} 条记录")
+        logger.info(f"开始更新Milvus数据库，共 {len(vector_chunks)} 条记录")
         
         try:
             # 准备数据
             data = []
-            for i, (vector, text) in enumerate(zip(embeddings, text_chunks)):
+            import time
+            
+            # 使用时间戳+块索引生成唯一整数ID，避免与之前存储的向量ID冲突
+            # 时间戳精确到毫秒，加上块索引可以确保唯一性
+            timestamp = int(time.time() * 1000)
+            
+            for i, chunk in enumerate(vector_chunks):
+                # 生成唯一整数ID：时间戳 * 1000 + 块索引
+                unique_id = timestamp * 1000 + i
+                
                 record = {
-                    "id": i,  # 使用简单的ID生成策略，实际应用中应使用更唯一的ID
-                    "vector": vector,
-                    "text": text,
+                    "id": unique_id,
+                    "vector": chunk["vector"],
+                    "text_chunk": chunk["text_chunk"],
                     "source": pdf_metadata.get("path", "unknown") if pdf_metadata else "unknown",
-                    "page": pdf_metadata.get("page", 0) if pdf_metadata else 0
+                    "page": chunk["page_number"]
                 }
                 data.append(record)
             
@@ -372,7 +453,7 @@ class FinancialPDFProcessor:
     
     def process_single_pdf(self, pdf_path: str) -> Dict[str, Any]:
         """
-        处理单个PDF文件的完整流程
+        处理单个PDF文件的完整流程，保留页面信息
         
         Args:
             pdf_path: PDF文件路径
@@ -383,9 +464,9 @@ class FinancialPDFProcessor:
         logger.info(f"开始处理PDF文件: {pdf_path}")
         
         try:
-            # 1. PDF解析与文本提取
-            full_text = self.extract_text_from_pdf(pdf_path)
-            if not full_text or not full_text.strip():
+            # 1. PDF解析与文本提取（保留页面信息）
+            pages_text = self.extract_text_from_pdf(pdf_path)
+            if not pages_text:
                 logger.warning(f"PDF文件 {pdf_path} 提取的文本为空，无法继续处理")
                 return {
                     "success": False,
@@ -393,8 +474,8 @@ class FinancialPDFProcessor:
                     "error": "PDF文件提取的文本为空"
                 }
             
-            # 2. 文本分块
-            text_chunks = self.chunk_text(full_text)
+            # 2. 文本分块（保留页面信息）
+            text_chunks = self.chunk_text(pages_text)
             if not text_chunks:
                 logger.warning(f"PDF文件 {pdf_path} 文本分块失败，无法继续处理")
                 return {
@@ -403,9 +484,9 @@ class FinancialPDFProcessor:
                     "error": "PDF文本分块失败"
                 }
             
-            # 3. 文本向量化
-            embeddings = self.generate_embeddings(text_chunks)
-            if not embeddings:
+            # 3. 文本向量化（保留页面信息）
+            vector_chunks = self.generate_embeddings(text_chunks)
+            if not vector_chunks:
                 logger.warning(f"PDF文件 {pdf_path} 向量生成失败，无法继续处理")
                 return {
                     "success": False,
@@ -418,15 +499,18 @@ class FinancialPDFProcessor:
                 "path": pdf_path,
                 "filename": os.path.basename(pdf_path)
             }
-            updated_count = self.update_milvus(embeddings, text_chunks, pdf_metadata)
+            updated_count = self.update_milvus(vector_chunks, pdf_metadata)
             
             # 5. 验证
-            self.verify_update(text_chunks, embeddings)
+            self.verify_update(vector_chunks)
+            
+            # 计算总文本长度
+            total_text_length = sum(len(chunk['text_chunk']) for chunk in text_chunks)
             
             result = {
                 "success": True,
                 "pdf_path": pdf_path,
-                "text_length": len(full_text),
+                "text_length": total_text_length,
                 "chunks_count": len(text_chunks),
                 "updated_count": updated_count
             }
@@ -442,46 +526,77 @@ class FinancialPDFProcessor:
                 "error": str(e)
             }
     
-    def verify_update(self, text_chunks: List[str], embeddings: List[List[float]]):
+    def verify_update(self, vector_chunks: List[Dict[str, Any]]):
         """
         验证更新结果
         
         Args:
-            text_chunks: 文本块列表
-            embeddings: 向量列表
+            vector_chunks: 向量块列表，每个元素包含page_number、text和vector字段
         """
         logger.info("开始验证更新结果")
         
         try:
             # 随机抽样验证
-            sample_size = min(5, len(text_chunks))
-            sample_indices = random.sample(range(len(text_chunks)), sample_size)
+            sample_size = min(5, len(vector_chunks))
+            if sample_size == 0:
+                logger.warning("没有可用的向量块进行验证")
+                return
+            
+            sample_indices = random.sample(range(len(vector_chunks)), sample_size)
+            
+            # 使用Legacy Milvus API进行搜索，确保集合正确加载
+            from pymilvus import connections, Collection
+            
+            # 确保连接已建立
+            if not connections.has_connection("default"):
+                connections.connect("default", host="localhost", port="19530")
+                logger.info("已建立Milvus默认连接")
+            
+            # 获取集合对象并加载
+            collection = Collection(self.collection_name)
+            collection.load()
+            logger.info(f"已加载集合 {self.collection_name}")
             
             for idx in sample_indices:
-                text_chunk = text_chunks[idx]
-                embedding = embeddings[idx]
+                chunk = vector_chunks[idx]
+                text_chunk = chunk["text_chunk"]
+                embedding = chunk["vector"]
+                page_number = chunk["page_number"]
                 
-                # 使用向量查询相似度
-                search_result = self.milvus_client.search(
-                    collection_name=self.collection_name,
+                # 使用Legacy API进行搜索
+                search_params = {
+                    "metric_type": "IP",
+                    "params": {"ef": 64}
+                }
+                
+                results = collection.search(
                     data=[embedding],
+                    anns_field="vector",
+                    param=search_params,
                     limit=1,
-                    output_fields=["text"]
+                    output_fields=["text_chunk", "page"]
                 )
                 
-                if search_result and search_result[0]:
-                    top_result = search_result[0][0]
-                    retrieved_text = top_result["entity"]["text"]
-                    similarity = top_result["distance"]
+                if results and results[0]:
+                    top_result = results[0][0]
+                    retrieved_text = top_result.entity.get("text_chunk", "")
+                    retrieved_page = top_result.entity.get("page", 0)
+                    similarity = top_result.distance
                     
-                    logger.debug(f"验证样本 {idx}: 相似度={similarity:.4f}")
+                    logger.debug(f"验证样本 {idx} (第 {page_number} 页): 相似度={similarity:.4f}, 检索页面={retrieved_page}")
                     logger.debug(f"原始文本片段: {text_chunk[:100]}...")
                     logger.debug(f"检索文本片段: {retrieved_text[:100]}...")
                     
                     # 检查相似度阈值
                     if similarity < 0.8:
                         logger.warning(f"样本 {idx} 相似度较低: {similarity:.4f}")
+                    
+                    # 检查页面信息是否正确存储
+                    if retrieved_page != page_number:
+                        logger.warning(f"样本 {idx} 页面信息不匹配: 原始页面={page_number}, 存储页面={retrieved_page}")
             
+            # 验证完成后卸载集合（可选）
+            collection.release()
             logger.info("更新验证完成")
             
         except Exception as e:

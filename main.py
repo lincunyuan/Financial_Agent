@@ -100,22 +100,14 @@ def main():
         logger.info(f"加载了 {len(tools)} 个LangChain工具")
         
         # 初始化RAG模块
-        vector_db_dir = os.path.join("data", "chroma_db")  # 与build_rag_kb.py使用相同的路径
         rag = None
         try:
-            from core.langchain_rag import LocalEmbeddings
-            
-            # 使用本地嵌入模型
-            embeddings = LocalEmbeddings()
-            
             # 从配置中获取base_url
             base_url = config.get("base_url")
             api_key = config.get("api_key") or os.getenv("OPENAI_API_KEY")
             
             rag = FinancialRAG(
-                vector_db_dir=vector_db_dir,
                 llm=llm_client.client,
-                embeddings=embeddings,
                 api_key=api_key,
                 base_url=base_url
             )

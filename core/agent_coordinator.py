@@ -40,11 +40,14 @@ class FinancialAssistantAgent:
         
         # 初始化知识库
         mysql_config = self.config_loader.get("database.yaml", "mysql", {})
+        milvus_config = self.config_loader.get("database.yaml", "milvus", {})
+        collection_name = milvus_config.get("collection_name", "financial_reportsqwen_fixed_test_2")
         self.knowledge_base = FinancialKnowledgeBase(
             mysql_host=mysql_config.get("host", "localhost"),
             mysql_user=mysql_config.get("user", "root"),
             mysql_password=mysql_config.get("password", ""),
-            mysql_db=mysql_config.get("database", "financial_rag")
+            mysql_db=mysql_config.get("database", "financial_rag"),
+            collection_name=collection_name
         )
         
         # 初始化数据API

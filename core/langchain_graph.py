@@ -721,8 +721,8 @@ class FinancialAgentGraph:
             if state.get("tool_result"):
                 context["realtime_data"] = state["tool_result"]
             
-            # 如果有RAG模块，并且意图是查询知识库
-            if self.rag and state.get("intent") in ["query_knowledge", "unknown"]:
+            # 如果有RAG模块，尝试使用知识库增强回答
+            if self.rag:
                 # 使用RAG增强生成
                 rag_result = self.rag.retrieve_and_generate(state["user_input"])
                 if rag_result.get("source_documents"):
