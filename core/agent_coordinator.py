@@ -478,8 +478,18 @@ class FinancialAssistantAgent:
         citations = []
         
         # 知识库引用
-        if data_sources.get('knowledge_base'):
-            citations.append("📚 知识库参考")
+        knowledge_chunks = data_sources.get('knowledge_base', [])
+        if knowledge_chunks:
+            knowledge_citations = []
+            for chunk in knowledge_chunks:
+                source_info = chunk.get('source', '')
+                if source_info and source_info not in knowledge_citations:
+                    knowledge_citations.append(source_info)
+            
+            if knowledge_citations:
+                citations.append(f"📚 参考资料: {', '.join(knowledge_citations)}")
+            else:
+                citations.append("📚 知识库参考")
             
         # 实时数据引用
         if data_sources.get('real_time_data'):

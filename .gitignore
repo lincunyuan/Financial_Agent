@@ -52,3 +52,6 @@ data/pdfs/
 
 # 静态资源目录
 static/
+
+# 图表目录
+charts/

@@ -12,7 +12,7 @@ class FinancialKnowledgeBase:
     def __init__(self, milvus_host: str = "localhost", milvus_port: int = 19530,
                  mysql_host: str = "localhost", mysql_user: str = "root",
                  mysql_password: str = "", mysql_db: str = "financial_rag",
-                 embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"):
+                 embedding_model_name: str = "qwen3-embedding"):
         """初始化向量库和关系型数据库连接"""
         import time
         max_retries = 3
@@ -28,7 +28,6 @@ class FinancialKnowledgeBase:
                 
                 # 使用EmbeddingGenerator类加载模型
                 self.embedding_model = EmbeddingGenerator(embedding_model_name)
-                self.embedding_model = self.embedding_model.model  # 保留原始SentenceTransformer模型接口
 
                 # 初始化MySQL连接
                 self.mysql_conn = mysql.connector.connect(
@@ -53,21 +52,31 @@ class FinancialKnowledgeBase:
 
     def _init_milvus_collection(self):
         """初始化Milvus集合"""
+        # 获取向量维度
+        try:
+            from utils.embedding_utils import EmbeddingGenerator
+            temp_embedder = EmbeddingGenerator(self.embedding_model_name)
+            vector_dim = temp_embedder.get_dimension()
+        except Exception as e:
+            import logging
+            logging.error(f"获取向量维度失败: {e}")
+            vector_dim = 1024  # qwen3-embedding的默认维度
+
         fields = [
             FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=True),
             FieldSchema(name="document_id", dtype=DataType.INT64),
             FieldSchema(name="text_chunk", dtype=DataType.VARCHAR, max_length=2000),
-            FieldSchema(name="embedding_vector", dtype=DataType.FLOAT_VECTOR, dim=384)
+            FieldSchema(name="embedding_vector", dtype=DataType.FLOAT_VECTOR, dim=vector_dim)
         ]
 
         schema = CollectionSchema(fields, "Financial document embeddings collection")
         self.collection = Collection("financial_embeddings", schema)
 
-        # 创建索引
+        # 创建索引，使用HNSW算法优化检索速度
         index_params = {
-            "index_type": "IVF_FLAT",
+            "index_type": "HNSW",
             "metric_type": "IP",
-            "params": {"nlist": 1024}
+            "params": {"M": 16, "efConstruction": 200}
         }
         self.collection.create_index("embedding_vector", index_params)
 
@@ -145,6 +154,7 @@ class FinancialKnowledgeBase:
 
     def retrieve_relevant_chunks(self, query: str, top_k: int = 5) -> List[Dict]:
         """检索与查询最相关的文本片段"""
+        # 使用EmbeddingGenerator的encode方法生成查询向量
         query_embedding = self.embedding_model.encode(query).tolist()
 
         self.collection.load()
@@ -158,13 +168,21 @@ class FinancialKnowledgeBase:
             output_fields=["document_id", "text_chunk"]
         )
 
-        # 整理检索结果
+        # 整理检索结果，包含来源信息
         relevant_chunks = []
         for hit in results[0]:
+            doc_id = hit.entity.get("document_id")
+            text_chunk = hit.entity.get("text_chunk")
+            similarity_score = hit.distance
+            
+            # 获取文档来源信息
+            source_info = self.get_url_from_doc_id(doc_id)
+            
             relevant_chunks.append({
-                "document_id": hit.entity.get("document_id"),
-                "text_chunk": hit.entity.get("text_chunk"),
-                "similarity_score": hit.distance
+                "document_id": doc_id,
+                "text_chunk": text_chunk,
+                "similarity_score": similarity_score,
+                "source": source_info
             })
 
         return relevant_chunks

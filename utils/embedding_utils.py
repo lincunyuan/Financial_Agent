@@ -1,7 +1,6 @@
-# 向量处理工具# 向量处理工具
+# 向量处理工具
 import numpy as np
 from typing import List, Union, Optional
-from sentence_transformers import SentenceTransformer
 import torch
 import os
 from utils.logging import default_logger
@@ -18,6 +17,7 @@ class EmbeddingGenerator:
             model_name: 预训练模型名称，支持中英文
                 - 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2' (推荐，支持中英文)
                 - 'sentence-transformers/all-MiniLM-L6-v2' (英文)
+                - 'qwen3-embedding' (中文，阿里云开发的Embedding模型)
         """
         import time
         max_retries = 3
@@ -25,23 +25,57 @@ class EmbeddingGenerator:
         
         while retry_count < max_retries:
             try:
-                local_model_path = "./models/all-MiniLM-L6-v2"
-                
-                # 优先尝试本地加载
-                if os.path.exists(local_model_path):
-                    default_logger.info("检测到本地模型，优先加载...")
-                    self.model = SentenceTransformer(local_model_path, device="cpu")
-                else:
-                    # 本地不存在，从网络下载
-                    default_logger.info("本地模型不存在，从网络下载...")
-                    os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
-                    self.model = SentenceTransformer(model_name, device="cpu")
+                # 检查是否是qwen3-embedding模型
+                if model_name == "qwen3-embedding":
+                    from transformers import AutoModel, AutoTokenizer
                     
-                    # 下载后保存到本地
-                    self.model.save(local_model_path)
-                    default_logger.info(f"模型已保存到本地: {local_model_path}")
+                    # 为qwen3-embedding创建本地模型路径
+                    local_model_path = "./models/Qwen3-Embedding-0.6B/Qwen/Qwen3-Embedding-0___6B"
+                    
+                    # 优先尝试本地加载
+                    if os.path.exists(local_model_path):
+                        default_logger.info("检测到本地qwen3-embedding模型，优先加载...")
+                        self.tokenizer = AutoTokenizer.from_pretrained(local_model_path)
+                        self.model = AutoModel.from_pretrained(local_model_path)
+                    else:
+                        # 本地不存在，从网络下载
+                        default_logger.info("本地qwen3-embedding模型不存在，从网络下载...")
+                        os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+                        self.tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen3-Embedding-0.6B")
+                        self.model = AutoModel.from_pretrained("Qwen/Qwen3-Embedding-0.6B")
+                        
+                        # 下载后保存到本地
+                        self.tokenizer.save_pretrained(local_model_path)
+                        self.model.save_pretrained(local_model_path)
+                        default_logger.info(f"qwen3-embedding模型已保存到本地: {local_model_path}")
+                    
+                    # Qwen3-embedding模型的向量维度
+                    self.dimension = 1024
+                    self.model_type = "qwen3"
+                else:
+                    # 使用sentence-transformers模型
+                    from sentence_transformers import SentenceTransformer
+                    
+                    # 为不同的sentence-transformers模型创建不同的本地路径
+                    local_model_path = f"./models/{model_name.split('/')[-1]}"
+                    
+                    # 优先尝试本地加载
+                    if os.path.exists(local_model_path):
+                        default_logger.info("检测到本地sentence-transformers模型，优先加载...")
+                        self.model = SentenceTransformer(local_model_path, device="cpu")
+                    else:
+                        # 本地不存在，从网络下载
+                        default_logger.info("本地sentence-transformers模型不存在，从网络下载...")
+                        os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+                        self.model = SentenceTransformer(model_name, device="cpu")
+                        
+                        # 下载后保存到本地
+                        self.model.save(local_model_path)
+                        default_logger.info(f"sentence-transformers模型已保存到本地: {local_model_path}")
+                    
+                    self.dimension = self.model.get_sentence_embedding_dimension()
+                    self.model_type = "sentence_transformers"
                 
-                self.dimension = self.model.get_sentence_embedding_dimension()
                 default_logger.info(f"Embedding模型加载成功，维度: {self.dimension}")
                 return
                 
@@ -73,19 +107,58 @@ class EmbeddingGenerator:
         Returns:
             向量数组，shape为 (n, dimension) 或 (dimension,)
         """
+        # 检查输入是否为空
         if isinstance(texts, str):
+            if not texts.strip():
+                # 返回零向量
+                return np.zeros(self.dimension)
             texts = [texts]
             single_text = True
         else:
+            # 过滤空文本
+            texts = [text.strip() for text in texts if text.strip()]
             single_text = False
         
         try:
-            embeddings = self.model.encode(
-                texts,
-                batch_size=batch_size,
-                normalize_embeddings=normalize,
-                show_progress_bar=show_progress
-            )
+            # 如果所有文本都为空，返回零向量数组
+            if not texts:
+                if single_text:
+                    return np.zeros(self.dimension)
+                else:
+                    return np.array([])
+            
+            if hasattr(self, 'model_type') and self.model_type == "qwen3":
+                # 使用qwen3-embedding模型进行编码
+                embeddings = []
+                
+                for text in texts:
+                    # 对文本进行标记化
+                    inputs = self.tokenizer(text, return_tensors="pt", padding=True, truncation=True)
+                    
+                    # 模型推理获取隐藏状态
+                    with torch.no_grad():
+                        outputs = self.model(**inputs)
+                    
+                    # 获取最后一层的隐藏状态
+                    last_hidden = outputs.last_hidden_state
+                    
+                    # 使用CLS标记的表示作为嵌入
+                    cls_embedding = last_hidden[:, 0, :].squeeze().numpy()
+                    embeddings.append(cls_embedding)
+                
+                embeddings = np.array(embeddings)
+            else:
+                # 使用sentence-transformers模型进行编码
+                embeddings = self.model.encode(
+                    texts,
+                    batch_size=batch_size,
+                    normalize_embeddings=normalize,
+                    show_progress_bar=show_progress
+                )
+            
+            # 归一化向量
+            if normalize and len(embeddings) > 0:
+                embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
             
             if single_text:
                 return embeddings[0]

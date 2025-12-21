@@ -307,7 +307,12 @@ class PromptEngine:
         if knowledge_chunks:
             context_parts.append("【相关知识背景】")
             for i, chunk in enumerate(knowledge_chunks[:3]):
-                context_parts.append(f"{i+1}. {chunk.get('content', '')}")
+                text_chunk = chunk.get('text_chunk', chunk.get('content', ''))
+                source_info = chunk.get('source', '')
+                if source_info:
+                    context_parts.append(f"{i+1}. {text_chunk} (来源：{source_info})")
+                else:
+                    context_parts.append(f"{i+1}. {text_chunk}")
         
         return "\n\n".join(context_parts) if context_parts else "当前无特定数据上下文"
     
